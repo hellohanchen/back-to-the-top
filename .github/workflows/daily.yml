@@ -1,0 +1,38 @@
+name: Daily market data
+on:
+  schedule:
+    - cron: '35 6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: daily-market-data
+  cancel-in-progress: false
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify collector
+        run: python3 -m unittest discover -s tests -v
+      - name: Collect missing completed EST days
+        run: python3 collector/scan.py --workers 16 --latest-first
+      - name: Record verified data
+        run: |
+          git config user.name 'Back to the Top Data'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/data
+          if ! git diff --cached --quiet; then
+            git commit -m 'data: update completed EST days'
+            git push
+          fi
+      - name: Publish and verify hosted dataset
+        env:
+          SITE_URL: https://back-to-the-top-han.han110656.chatgpt.site
+          DATA_WRITE_KEY: ${{ secrets.DATA_WRITE_KEY }}
+          SITES_SERVICE_TOKEN: ${{ secrets.SITES_SERVICE_TOKEN }}
+        run: python3 scripts/publish-data.py
