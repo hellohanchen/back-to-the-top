@@ -21,8 +21,9 @@ function render(){
  const done=d?.status==='complete';
  $('previous').disabled=selected<=data.startDate;$('next').disabled=selected>=data.throughDate;
  const needs=done&&(!source(d,'moments','listing')?.hasOwnProperty('median')||d.activityScope!=='monitored-topshot-events-v2');
- $('notice').hidden=done&&!needs&&data.throughDate>=lastClosedDay();
- $('notice').textContent=!done?'Daily report pending.':needs?'Expanded daily statistics are being refreshed.':`Latest completed day: ${data.throughDate} (EST).`;
+ const historyPending=(data.activityCoverage?.completedDays??0)<data.totalDays;
+ $('notice').hidden=done&&!needs&&!historyPending&&data.throughDate>=lastClosedDay();
+ $('notice').textContent=!done?'Daily report pending.':needs?'Expanded daily statistics are being refreshed.':historyPending?`Activity history refresh · ${data.activityCoverage?.completedDays??0} / ${data.totalDays} days`:`Latest completed day: ${data.throughDate} (EST).`;
  const vols=[['Moments · Offers','moments','offer'],['Moments · Listings','moments','listing'],['Packs · Listings','packs','listing']];
  strip('volume-values',vols.map(([label,a,s])=>[label,money(source(d,a,s)?.volume)]),true);
  plot('volume',vols.map(([name,a,s])=>({name,type:'bar',data:data.days.map(x=>source(x,a,s)?.volume??null)})),true,true);
