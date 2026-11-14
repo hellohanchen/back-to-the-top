@@ -18,6 +18,10 @@ export function validateData(data) {
         for(const key of ['volume','sales','average','median','highest','active','buyers','sellers'])if(!Number.isFinite(row[key])||row[key]<0)return false;
         if(!row.sources)return false;
         for(const key of ['listing','offer','legacy'])if(!Number.isFinite(row.sources[key]?.volume)||row.sources[key].volume<0||!Number.isInteger(row.sources[key]?.sales)||row.sources[key].sales<0)return false;
+        if(day.activityScope==='monitored-topshot-events-v2')for(const source of Object.values(row.sources)){
+          for(const key of ['median','average','highest'])if(!Number.isFinite(source[key])||source[key]<0)return false;
+          if(source.highest<source.median||source.highest<source.average)return false;
+        }
         const sourceSales=Object.values(row.sources).reduce((s,r)=>s+r.sales,0);
         const sourceVolume=Object.values(row.sources).reduce((s,r)=>s+r.volume,0);
         if(sourceSales!==row.sales||Math.abs(sourceVolume-row.volume)>.02)return false;

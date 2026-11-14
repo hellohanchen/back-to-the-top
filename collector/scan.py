@@ -30,6 +30,18 @@ EVENTS = {
  'offered': 'A.b8ea91944fd51c43.OffersV2.OfferAvailable',
  'moment_in': PREFIX+'TopShot.Deposit', 'moment_out': PREFIX+'TopShot.Withdraw',
  'pack_in': PREFIX+'PackNFT.Deposit', 'pack_out': PREFIX+'PackNFT.Withdraw',
+ 'legacy_listed': 'A.c1e4f4f4c4257510.TopShotMarketV3.MomentListed',
+ 'legacy_repriced': 'A.c1e4f4f4c4257510.TopShotMarketV3.MomentPriceChanged',
+ 'legacy_withdrawn': 'A.c1e4f4f4c4257510.TopShotMarketV3.MomentWithdrawn',
+ 'listing_destroyed': 'A.4eb8a10cb9f87357.NFTStorefrontV2.Listing.ResourceDestroyed',
+ 'moment_minted': PREFIX+'TopShot.MomentMinted',
+ 'moment_destroyed': PREFIX+'TopShot.NFT.ResourceDestroyed',
+ 'pack_minted': PREFIX+'PackNFT.Minted',
+ 'pack_destroyed': PREFIX+'PackNFT.NFT.ResourceDestroyed',
+ 'pack_reveal_requested': PREFIX+'PackNFT.RevealRequest',
+ 'pack_open_requested': PREFIX+'PackNFT.OpenRequest',
+ 'pack_revealed': PREFIX+'PackNFT.Revealed',
+ 'pack_opened': PREFIX+'PackNFT.Opened',
  'locked': PREFIX+'TopShotLocking.MomentLocked', 'unlocked': PREFIX+'TopShotLocking.MomentUnlocked',
 }
 
@@ -115,7 +127,7 @@ class Flow:
         for block in blocks:
             for event in block.get('events', []):
                 data = decode(json.loads(base64.b64decode(event['payload'])))
-                if kind in ('listing', 'offer', 'listed', 'offered') and data.get('nftType') not in TYPES:
+                if kind in ('listing', 'offer', 'listed', 'offered', 'listing_destroyed') and data.get('nftType') not in TYPES:
                     continue
                 result.append({'kind': kind, 'ts': block['block_timestamp'], 'tx': event['transaction_id'],
                                'index': int(event['event_index']), 'data': data})
@@ -132,7 +144,7 @@ class Flow:
             for result in pool.map(self.events, jobs):
                 events.extend(result)
         events = [e for e in events if start <= parse_time(e['ts']) < end]
-        txs = sorted({e['tx'] for e in events if e['kind'] in ('locked', 'unlocked')})
+        txs = sorted({e['tx'] for e in events if needs_signer(e)})
         def authorizers(tx):
             data = self.get('/transactions/'+tx)
             return tx, ['0x'+a.removeprefix('0x') for a in data.get('authorizers', [])]
@@ -163,6 +175,12 @@ def resolve_offer_currency(offer, transaction_events):
     return next(iter(types)) if len(types) == 1 else None
 
 
+SIGNER_EVENTS = {'locked', 'unlocked', 'listing_destroyed', 'pack_reveal_requested',
+                 'pack_open_requested', 'moment_destroyed', 'pack_destroyed'}
+
+def needs_signer(event):
+    return event['kind'] in SIGNER_EVENTS or (event['kind'] == 'listing' and not event['data'].get('purchased'))
+
 def asset_for(event):
     kind = event['kind']
     if kind.startswith('pack_'):
@@ -174,9 +192,10 @@ def aggregate(events, authorizers=None):
     unique = {(e['tx'], e['index']): e for e in events}
     events = sorted(unique.values(), key=lambda e: (e['ts'], e['tx'], e['index']))
     transfers = {}
-    sets = {a: {r: set() for r in ('active', 'buyers', 'sellers', 'listers', 'offerers', 'lockSigners')} for a in ('moments', 'packs')}
+    sets = {a: {r: set() for r in ('active', 'buyers', 'sellers', 'listers', 'offerers', 'lockSigners', 'activitySigners')} for a in ('moments', 'packs')}
     sales = {a: [] for a in sets}
-    locked = unlocked = ambiguous_locks = non_usd = unmatched = 0
+    locked = unlocked = ambiguous_locks = ambiguous_activity = non_usd = unmatched = 0
+    activity_counts = {a: {} for a in sets}
     def add(asset, role, addr):
         if addr and addr.lower() not in SYSTEM:
             addr = addr.lower()
@@ -184,15 +203,25 @@ def aggregate(events, authorizers=None):
             sets[asset]['active'].add(addr)
     for event in events:
         k, f, a = event['kind'], event['data'], asset_for(event)
+        activity_counts[a][k] = activity_counts[a].get(k, 0) + 1
+        if needs_signer(event):
+            auth = authorizers.get(event['tx'], [])
+            if len(auth) == 1:
+                add(a, 'activitySigners', auth[0])
+            else:
+                ambiguous_activity += 1
         if k.endswith(('_in', '_out')):
             role = 'to' if k.endswith('_in') else 'from'
             addr = f.get(role)
             add(a, 'active', addr)
             transfers.setdefault((event['tx'], a, str(f['id'])), []).append((event['index'], role, addr))
+        elif k in ('legacy_listed', 'legacy_repriced', 'legacy', 'legacy_withdrawn'):
+            add(a, 'listers' if k == 'legacy_listed' else 'active', f.get('seller') or f.get('owner'))
         elif k == 'listed':
             add(a, 'listers', f.get('storefrontAddress'))
         elif k in ('offered', 'offer'):
             add(a, 'offerers' if k == 'offered' else 'active', f.get('offerAddress'))
+            add(a, 'active', f.get('acceptingAddress'))
         elif k in ('locked', 'unlocked'):
             locked += k == 'locked'
             unlocked += k == 'unlocked'
@@ -234,6 +263,12 @@ def aggregate(events, authorizers=None):
         unmatched += not buyer or not seller
     def money(v):
         return float(v.quantize(Decimal('0.01')))
+    def price_stats(prices):
+        volume = sum(prices, Decimal(0))
+        return {'sales': len(prices), 'volume': money(volume),
+                'median': money(statistics.median(prices)) if prices else 0,
+                'average': money(volume/len(prices)) if prices else 0,
+                'highest': money(max(prices)) if prices else 0}
     result = {}
     for a in sets:
         prices = [s['price'] for s in sales[a]]
@@ -244,12 +279,13 @@ def aggregate(events, authorizers=None):
             'average': money(volume/len(prices)) if prices else 0,
             'highest': money(max(prices)) if prices else 0,
             **{k: len(v) for k, v in sets[a].items()},
-            'sources': {s: {'sales': sum(r['source'] == s for r in sales[a]),
-                             'volume': money(sum((r['price'] for r in sales[a] if r['source'] == s), Decimal(0)))}
+            'activityEvents': activity_counts[a],
+            'sources': {s: price_stats([r['price'] for r in sales[a] if r['source'] == s])
                         for s in ('listing', 'offer', 'legacy')},
         }
     result.update(locked=locked, unlocked=unlocked,
-                  quality={'unresolvedLockEvents': ambiguous_locks, 'nonUsdSalesExcluded': non_usd, 'salesWithoutBothAddresses': unmatched},
+                  activityScope='monitored-topshot-events-v2',
+                  quality={'unresolvedActivityEvents': ambiguous_activity, 'unresolvedLockEvents': ambiguous_locks, 'nonUsdSalesExcluded': non_usd, 'salesWithoutBothAddresses': unmatched},
                   **{role: len(sets['moments'][role] | sets['packs'][role]) for role in ('active', 'buyers', 'sellers')})
     return result
 
@@ -266,7 +302,22 @@ def build_dataset(output, now=None):
     payload = {'schemaVersion': 1, 'title': 'Back to the Top', 'timezone': 'EST (UTC−05:00)',
                'startDate': str(START), 'throughDate': str(yesterday), 'generatedAt': now.isoformat(),
                'completedDays': len(complete), 'totalDays': len(rows),
-               'latestCompleteDate': complete[-1]['date'] if complete else None, 'days': rows}
+               'latestCompleteDate': complete[-1]['date'] if complete else None,
+               'activityCoverage': {
+                   'version': 'monitored-topshot-events-v2',
+                   'completedDays': sum(r.get('activityScope') == 'monitored-topshot-events-v2' for r in complete),
+                   'events': EVENTS,
+                   'excludedAddresses': sorted(SYSTEM),
+                   'attribution': 'Unique observed transfer endpoints, marketplace participant addresses, and single transaction authorizers for locks, listing removal/cleanup, NFT destruction and pack reveal/open requests. Authorizers are signers, not proven owners; transactions with zero or multiple authorizers remain unattributed unless other events identify participants.',
+                   'limitations': [
+                       'Covers the listed TopShot, PackNFT, TopShotLocking, NFTStorefrontV2, OffersV2 and legacy TopShotMarketV3 events; it is not an exhaustive audit of every TopShot-related contract or every on-chain action.',
+                       'Transfers include gifts, mint deliveries and withdrawals; a gift cannot be distinguished reliably from an off-platform paid transfer.',
+                       'Mint, reveal and open completion events without participant addresses do not independently identify users; administrative signers are not inferred as collectors.',
+                       'Listing removal may be public cleanup of an expired or ghost listing; its signer is not necessarily the seller.',
+                       'Metadata/series/set administration, contract/account setup, permission changes, calls without monitored events, and off-chain activity are excluded.',
+                       'Only the listed known system addresses are excluded; addresses are not unique people and undiscovered service addresses may remain.',
+                   ],
+               }, 'days': rows}
     atomic_json(output/'daily.json', payload)
     return payload
 

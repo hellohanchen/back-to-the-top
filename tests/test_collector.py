@@ -68,6 +68,67 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(r['unlocked'],1)
         self.assertEqual(r['quality']['unresolvedLockEvents'],1)
 
+    def test_expanded_activity_includes_cancellation_legacy_and_requests(self):
+        events = [event('listing', 0, {'nftType': MOMENT, 'purchased': False}),
+                  event('legacy_repriced', 1, {'seller': '0xbb'}),
+                  event('offer', 2, {'nftType': MOMENT, 'purchased': False, 'offerAddress': '0xcc'}),
+                  event('pack_open_requested', 3, {'id': '7'}, 'pack'),
+                  event('pack_reveal_requested', 4, {'id': '8'}, 'ambiguous')]
+        r = aggregate(events, {'tx': ['0xaa'], 'pack': ['0xdd'], 'ambiguous': ['0xee', '0xff']})
+        self.assertEqual(r['active'], 4)
+        self.assertEqual(r['moments']['sales'], 0)
+        self.assertEqual(r['packs']['activitySigners'], 1)
+        self.assertEqual(r['quality']['unresolvedActivityEvents'], 1)
+        self.assertEqual(r['moments']['activityEvents']['listing'], 1)
+
+    def test_gift_addresses_and_lifecycle_not_sale_or_inferred_minter(self):
+        r = aggregate([event('moment_out', 0, {'id': '7', 'from': '0xaa'}),
+                       event('moment_in', 1, {'id': '7', 'to': '0xbb'}),
+                       event('moment_minted', 2, {'momentID': '8'}),
+                       event('pack_revealed', 3, {'id': '9'})], {'tx': ['0xcc']})
+        self.assertEqual(r['active'], 2)
+        self.assertEqual(r['moments']['sales'], 0)
+        self.assertEqual(r['packs']['active'], 0)
+
+    def test_listing_destroyed_not_double_sale_and_signer_dedup(self):
+        r = aggregate([sale(), event('listing_destroyed', 3, {'nftType': MOMENT, 'purchased': True})], {'tx': ['0xaa']})
+        self.assertEqual(r['moments']['sales'], 1)
+        self.assertEqual(r['moments']['activitySigners'], 1)
+        self.assertEqual(r['moments']['activityEvents']['listing_destroyed'], 1)
+
+    def test_system_signers_excluded_and_cross_asset_signers_union(self):
+        events = [event('pack_open_requested', 0, {'id': '7'}, 'system'),
+                  event('moment_destroyed', 1, {'id': '8'}, 'user'),
+                  event('pack_destroyed', 2, {'id': '9'}, 'user')]
+        r = aggregate(events, {'system': ['0xe1f2a091f7bb5245'], 'user': ['0xAA']})
+        self.assertEqual(r['active'], 1)
+        self.assertEqual(r['moments']['active'], 1)
+        self.assertEqual(r['packs']['active'], 1)
+        self.assertEqual(r['quality']['unresolvedActivityEvents'], 0)
+
+    def test_destroyed_listing_filters_other_collections(self):
+        def encoded(nft):
+            payload = {'type': 'Event', 'value': {'fields': [{'name': 'nftType', 'value': {'type': 'String', 'value': nft}}]}}
+            return base64.b64encode(json.dumps(payload).encode()).decode()
+        rows = [{'block_timestamp': '2026-10-01T10:00:00Z', 'events': [
+                {'payload': encoded(MOMENT), 'transaction_id': 'tx', 'event_index': '0'},
+                {'payload': encoded('A.other.Collection.NFT'), 'transaction_id': 'tx', 'event_index': '1'}]}]
+        with tempfile.TemporaryDirectory() as d:
+            f = Flow(d)
+            with patch.object(f, 'get', return_value=rows):
+                found = f.events(('listing_destroyed', 100, 200))
+            self.assertEqual(len(found), 1)
+            self.assertEqual(found[0]['data']['nftType'], MOMENT)
+
+    def test_source_price_distribution_and_empty_source(self):
+        events = [sale(i, price=str(v)) for i, v in enumerate([1, 2, 30])]
+        events.append(event('offer', 5, {'nftType': MOMENT, 'purchased': True, 'nftId': '8',
+                      'offerAmount': '80', 'paymentVaultType': VAULT, 'offerAddress': '0xaa', 'acceptingAddress': '0xbb'}))
+        r = aggregate(events)['moments']['sources']
+        self.assertEqual(r['listing'], {'sales': 3, 'volume': 33, 'median': 2, 'average': 11, 'highest': 30})
+        self.assertEqual(r['offer']['median'], 80)
+        self.assertEqual(r['legacy'], {'sales': 0, 'volume': 0, 'median': 0, 'average': 0, 'highest': 0})
+
     def test_pending_is_not_zero_and_current_day_excluded(self):
         with tempfile.TemporaryDirectory() as d:
             p=build_dataset(Path(d),datetime(2026,10,3,4,59,tzinfo=timezone.utc))
