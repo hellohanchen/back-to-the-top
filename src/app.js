@@ -17,7 +17,7 @@ function labels(key,series,i,money){
  const values=key==='volume'?series[0].data.map((_,j)=>series.reduce((total,row)=>total+(row.data[j]??0),0)):series[i].data;
  const lo=data.days.findIndex(d=>d.date===visible[0]?.date),hi=data.days.findIndex(d=>d.date===visible.at(-1)?.date);
  const shown=labelIndices(values,lo,hi);
- return {show:true,position:series[i].type==='line'&&i===1?'bottom':'top',fontSize:10,color:'#535b69',formatter:p=>(key==='volume'&&i!==series.length-1)||!shown.has(p.dataIndex)?'':format(values[p.dataIndex],money)};
+ return {show:true,position:'top',distance:9,fontSize:10,color:'#535b69',formatter:p=>(key==='volume'&&i!==series.length-1)||!shown.has(p.dataIndex)?'':format(values[p.dataIndex],money)};
 }
 function plot(key,days,series,money=false){
  plots[key]={series,money};
