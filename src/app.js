@@ -9,19 +9,20 @@ echarts.use([BarChart,LineChart,GridComponent,TooltipComponent,LegendComponent,D
 const $=id=>document.getElementById(id);
 const charts=Object.fromEntries(['volume','sales','median','average','highest','users'].map(k=>[k,echarts.init($(k+'-chart'),null,{renderer:'svg'})]));
 const plots={};
+const mobile=window.matchMedia('(max-width:700px)');
 let data, syncing=false;
 let visible=[];
 const source=(d,a,s)=>d?.status==='complete'?d[a]?.sources?.[s]:null;
 const format=(v,money=false)=>v==null?'—':new Intl.NumberFormat('en-US',{maximumFractionDigits:money?2:0,...(money?{style:'currency',currency:'USD'}:{})}).format(v);
 function labels(key,series,i,money){
- const values=key==='volume'?series[0].data.map((_,j)=>series.reduce((total,row)=>total+(row.data[j]??0),0)):series[i].data;
+ const values=(key==='volume'||key==='sales')?series[0].data.map((_,j)=>series.reduce((total,row)=>total+(row.data[j]??0),0)):series[i].data;
  const lo=data.days.findIndex(d=>d.date===visible[0]?.date),hi=data.days.findIndex(d=>d.date===visible.at(-1)?.date);
- const shown=labelIndices(values,lo,hi);
- return {show:true,position:'top',distance:9,fontSize:10,color:key==='volume'?'#e6e8eb':'#a4adbb',formatter:p=>(key==='volume'&&i!==series.length-1)||!shown.has(p.dataIndex)?'':format(values[p.dataIndex],money)};
+ const shown=labelIndices(values,lo,hi,mobile.matches?Math.max(2,Math.floor($(key+'-chart').clientWidth/64)):15);
+ return {show:true,position:'top',distance:9,fontSize:10,color:key==='volume'?'#e6e8eb':'#a4adbb',formatter:p=>((key==='volume'||key==='sales')&&i!==series.length-1)||!shown.has(p.dataIndex)?'':(mobile.matches?new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:1,...(money?{style:'currency',currency:'USD'}:{})}).format(values[p.dataIndex]):format(values[p.dataIndex],money))};
 }
 function plot(key,days,series,money=false){
  plots[key]={series,money};
- charts[key].setOption({animation:false,color:key==='users'?['#3b82f6','#14b8a6','#a78bfa']:['#8b5cf6','#3b82f6','#14b8a6'],textStyle:{fontFamily:'Inter, sans-serif'},legend:{selectedMode:false,top:0,left:0,itemWidth:9,itemHeight:9,icon:'roundRect',textStyle:{color:'#9ba6b7',fontSize:11}},tooltip:{trigger:'axis',confine:true,backgroundColor:'#1b222d',borderColor:'#343e4c',textStyle:{color:'#e6e8eb',fontSize:12},valueFormatter:v=>format(v,money)},grid:{left:8,right:12,top:64,bottom:52,containLabel:true},xAxis:{type:'category',data:days.map(d=>d.date),axisLabel:{color:'#8591a3',fontSize:10,formatter:v=>v.slice(5)},axisLine:{lineStyle:{color:'#29313d'}},axisTick:{show:false}},yAxis:{type:'value',max:v=>v.max*1.2,minInterval:money?undefined:1,axisLabel:{color:'#8591a3',fontSize:10,formatter:v=>(money?'$':'')+new Intl.NumberFormat('en',{notation:'compact'}).format(v)},splitLine:{lineStyle:{color:'#232a34',type:'solid'}}},dataZoom:[{type:'slider',startValue:visible[0]?.date,endValue:visible.at(-1)?.date,bottom:4,height:22,showDetail:false,brushSelect:true,borderColor:'#303947',backgroundColor:'#10141a',fillerColor:'rgba(59,130,246,.14)',handleStyle:{color:'#65758c',borderColor:'#8594a9'},dataBackground:{lineStyle:{color:'#3b4655'},areaStyle:{color:'#222b38'}},selectedDataBackground:{lineStyle:{color:'#598cce'},areaStyle:{color:'#263c59'}}}],series:series.map((s,i)=>({...s,label:labels(key,series,i,money),labelLayout:{moveOverlap:'shiftY'},showSymbol:true,symbolSize:5,connectNulls:false,barMaxWidth:32,lineStyle:{width:2},emphasis:{focus:'series'}}))},true);
+ charts[key].setOption({animation:false,color:key==='users'?['#3b82f6','#14b8a6','#a78bfa']:['#8b5cf6','#3b82f6','#14b8a6'],textStyle:{fontFamily:'Inter, sans-serif'},legend:{selectedMode:false,top:0,left:0,itemWidth:9,itemHeight:9,icon:'roundRect',textStyle:{color:'#9ba6b7',fontSize:11}},tooltip:{trigger:'axis',confine:true,backgroundColor:'#1b222d',borderColor:'#343e4c',textStyle:{color:'#e6e8eb',fontSize:12},valueFormatter:v=>format(v,money)},grid:{left:8,right:12,top:64,bottom:52,containLabel:true},xAxis:{type:'category',data:days.map(d=>d.date),axisLabel:{color:'#8591a3',fontSize:10,formatter:v=>v.slice(5)},axisLine:{lineStyle:{color:'#29313d'}},axisTick:{show:false}},yAxis:{type:'value',max:v=>v.max*1.2,minInterval:money?undefined:1,axisLabel:{color:'#8591a3',fontSize:10,formatter:v=>(money?'$':'')+new Intl.NumberFormat('en',{notation:'compact'}).format(v)},splitLine:{lineStyle:{color:'#232a34',type:'solid'}}},dataZoom:[{type:'slider',startValue:visible[0]?.date,endValue:visible.at(-1)?.date,bottom:4,height:22,showDetail:false,brushSelect:true,borderColor:'#303947',backgroundColor:'#10141a',fillerColor:'rgba(59,130,246,.14)',handleStyle:{color:'#65758c',borderColor:'#8594a9'},dataBackground:{lineStyle:{color:'#3b4655'},areaStyle:{color:'#222b38'}},selectedDataBackground:{lineStyle:{color:'#598cce'},areaStyle:{color:'#263c59'}}}],series:series.map((s,i)=>({...s,label:labels(key,series,i,money),labelLayout:{moveOverlap:'shiftY',hideOverlap:true},showSymbol:true,symbolSize:5,connectNulls:false,barMaxWidth:32,lineStyle:{width:2},emphasis:{focus:'series'}}))},true);
  $(key+'-chart').dataset.start=visible[0]?.date||'';$(key+'-chart').dataset.end=visible.at(-1)?.date||'';$(key+'-chart').dataset.days=visible.length;
 }
 function render(){
@@ -33,7 +34,7 @@ function render(){
  $('range-label').textContent=visible.length?`${visible[0].date} — ${visible.at(-1).date}`:'No data in range';
  const channels=[['Moments · Offers','moments','offer'],['Moments · Listings','moments','listing'],['Packs · Listings','packs','listing']];
  plot('volume',days,channels.map(([name,a,s])=>({name,type:'bar',stack:'volume',data:days.map(d=>source(d,a,s)?.volume??null)})),true);
- for(const metric of ['sales','median','average','highest'])plot(metric,days,['offer','listing'].map(s=>({name:s==='offer'?'Offers':'Listings',type:metric==='sales'?'bar':'line',data:days.map(d=>{const v=source(d,'moments',s);return metric==='sales'?v?.sales??null:v?.sales?v[metric]??null:null;})})),metric!=='sales');
+ for(const metric of ['sales','median','average','highest'])plot(metric,days,['offer','listing'].map(s=>({name:s==='offer'?'Offers':'Listings',type:metric==='sales'?'bar':'line',stack:metric==='sales'?'sales':undefined,data:days.map(d=>{const v=source(d,'moments',s);return metric==='sales'?v?.sales??null:v?.sales?v[metric]??null:null;})})),metric!=='sales');
  plot('users',days,[['Active users','active'],['Buyers','buyers'],['Sellers','sellers']].map(([name,key])=>({name,type:'line',data:days.map(d=>d.status==='complete'&&(key!=='active'||d.activityScope==='monitored-topshot-events-v2')?d[key]:null)})));
  const completed=data.activityCoverage?.completedDays??0;
  $('notice').hidden=completed===data.totalDays;
@@ -44,7 +45,8 @@ function render(){
 }
 function renderCalendar(){
  const target=$('calendar');target.replaceChildren();
- for(const cell of monthCells($('calendar-month').value,data.days)){
+ const cells=mobile.matches?data.days.slice(-7).map(row=>({date:row.date,day:row.date.slice(5),row})):monthCells($('calendar-month').value,data.days);
+ for(const cell of cells){
   const el=document.createElement('div');el.className='calendar-day';
   if(!cell){el.classList.add('empty');target.append(el);continue;}
   const date=document.createElement('time');date.dateTime=cell.date;date.textContent=cell.day;el.append(date);
@@ -80,7 +82,8 @@ for(const [key,chart] of Object.entries(charts))chart.on('datazoom',event=>{
 });
 document.querySelectorAll('[data-range]').forEach(b=>b.addEventListener('click',()=>{$('range').value=b.dataset.range;render();}));
 for(const id of ['range','start','end'])$(id).addEventListener('change',render);
-new ResizeObserver(()=>Object.values(charts).forEach(c=>c.resize())).observe($('main'));
+new ResizeObserver(()=>{for(const [k,c] of Object.entries(charts)){c.resize();if(data&&plots[k]){const {series,money}=plots[k];c.setOption({series:series.map((_,i)=>({label:labels(k,series,i,money)}))});}}}).observe($('main'));
+mobile.addEventListener('change',()=>{if(data)renderCalendar();});
 async function load(){try{const r=await fetch('/data/daily.json',{cache:'no-cache'});if(!r.ok)throw Error('Data unavailable');data=await r.json();for(const id of ['start','end']){$(id).min=data.startDate;$(id).max=data.throughDate;} $('start').value=data.startDate;$('end').value=data.throughDate;render();}catch(e){$('notice').hidden=false;$('notice').textContent='Daily data could not be loaded. Please refresh.';console.error(e);}
 
 }
