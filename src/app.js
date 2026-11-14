@@ -52,7 +52,7 @@ function renderCalendar(){
   if(sale&&/^\d+$/.test(sale.momentId)){
    const a=document.createElement('a');a.href=`https://nbatopshot.com/moment/${sale.momentId}`;a.target='_blank';a.rel='noopener noreferrer';
    a.setAttribute('aria-label',`${cell.date}: Moment ${sale.momentId}, ${format(sale.price,true)}. Open NBA Top Shot`);
-   const img=document.createElement('img');img.src=`https://assets.nbatopshot.com/media/${sale.momentId}/image?width=256&format=webp`;img.alt=`Moment #${sale.momentId}`;img.loading='lazy';img.onerror=()=>{img.hidden=true;};
+   const img=document.createElement('img');img.src=`https://assets.nbatopshot.com/media/${sale.momentId}/image?width=256&format=webp`;img.alt=`Moment #${sale.momentId}`;img.loading='lazy';img.draggable=false;img.onerror=()=>{img.hidden=true;};
    const value=document.createElement('strong');value.textContent=format(sale.price,true);
    const id=document.createElement('span');id.className='moment-id';id.textContent=`#${sale.momentId} ↗`;
    a.append(img,value,id);el.append(a);
