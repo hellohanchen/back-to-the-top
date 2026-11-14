@@ -17,6 +17,9 @@ export function validateData(data) {
         const row=day[asset];if(!row)return false;
         for(const key of ['volume','sales','average','median','highest','active','buyers','sellers'])if(!Number.isFinite(row[key])||row[key]<0)return false;
         if(!row.sources)return false;
+        if(row.highestSale!=null){const sale=row.highestSale;
+          if(!/^\d+$/.test(sale.momentId)||!Number.isFinite(sale.price)||sale.price!==row.highest||!['listing','offer','legacy'].includes(sale.source)||typeof sale.transactionId!=='string')return false;
+        }
         for(const key of ['listing','offer','legacy'])if(!Number.isFinite(row.sources[key]?.volume)||row.sources[key].volume<0||!Number.isInteger(row.sources[key]?.sales)||row.sources[key].sales<0)return false;
         if(day.activityScope==='monitored-topshot-events-v2')for(const source of Object.values(row.sources)){
           for(const key of ['median','average','highest'])if(!Number.isFinite(source[key])||source[key]<0)return false;

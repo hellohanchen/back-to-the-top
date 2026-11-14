@@ -247,7 +247,7 @@ def aggregate(events, authorizers=None):
         price = Decimal(amount)
         if price < 0:
             raise ValueError('Negative sale')
-        sales[a].append({'source': k, 'price': price})
+        sales[a].append({'source': k, 'price': price, 'momentId': str(nft), 'transactionId': event['tx']})
         if k == 'offer':
             buyer, seller = f.get('offerAddress'), f.get('acceptingAddress')
         else:
@@ -278,6 +278,7 @@ def aggregate(events, authorizers=None):
             'median': money(statistics.median(prices)) if prices else 0,
             'average': money(volume/len(prices)) if prices else 0,
             'highest': money(max(prices)) if prices else 0,
+            'highestSale': ({**{k: v for k, v in max(sales[a], key=lambda r: r['price']).items() if k != 'price'}, 'price': money(max(prices))} if sales[a] else None),
             **{k: len(v) for k, v in sets[a].items()},
             'activityEvents': activity_counts[a],
             'sources': {s: price_stats([r['price'] for r in sales[a] if r['source'] == s])
@@ -298,6 +299,11 @@ def build_dataset(output, now=None):
         path = output/'days'/f'{day}.json'
         rows.append(json.loads(path.read_text()) if path.exists() else {'date': str(day), 'status': 'pending'})
         day += timedelta(days=1)
+    archive = output/'top-sales.json'
+    historical = json.loads(archive.read_text()) if archive.exists() else {}
+    for row in rows:
+        if row.get('status') == 'complete' and 'highestSale' not in row['moments'] and row['date'] in historical:
+            row['moments']['highestSale'] = historical[row['date']]
     complete = [r for r in rows if r['status'] == 'complete']
     payload = {'schemaVersion': 1, 'title': 'Back to the Top', 'timezone': 'EST (UTC−05:00)',
                'startDate': str(START), 'throughDate': str(yesterday), 'generatedAt': now.isoformat(),

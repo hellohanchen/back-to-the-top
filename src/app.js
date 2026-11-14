@@ -2,6 +2,7 @@ import * as echarts from 'echarts/core';
 import {BarChart,LineChart} from 'echarts/charts';
 import {GridComponent,TooltipComponent,LegendComponent,DataZoomComponent} from 'echarts/components';
 import {SVGRenderer} from 'echarts/renderers';
+import {monthCells} from './calendar.js';
 import {windowDates} from './range.js';
 echarts.use([BarChart,LineChart,GridComponent,TooltipComponent,LegendComponent,DataZoomComponent,SVGRenderer]);
 const $=id=>document.getElementById(id);
@@ -27,8 +28,29 @@ function render(){
  const completed=data.activityCoverage?.completedDays??0;
  $('notice').hidden=completed===data.totalDays;
  $('notice').textContent=`Active users history: ${completed} / ${data.totalDays} days refreshed`;
+ if(!$('calendar-month').value)$('calendar-month').value=data.throughDate.slice(0,7);
+ renderCalendar();
  $('updated').textContent=`Updated ${data.generatedAt.slice(0,10)} · Daily observations · EST (UTC−5)`;
 }
+function renderCalendar(){
+ const target=$('calendar');target.replaceChildren();
+ for(const cell of monthCells($('calendar-month').value,data.days)){
+  const el=document.createElement('div');el.className='calendar-day';
+  if(!cell){el.classList.add('empty');target.append(el);continue;}
+  const date=document.createElement('time');date.dateTime=cell.date;date.textContent=cell.day;el.append(date);
+  const sale=cell.row?.moments?.highestSale;
+  if(sale&&/^\d+$/.test(sale.momentId)){
+   const a=document.createElement('a');a.href=`https://nbatopshot.com/moment/${sale.momentId}`;a.target='_blank';a.rel='noopener noreferrer';
+   a.setAttribute('aria-label',`${cell.date}: Moment ${sale.momentId}, ${format(sale.price,true)}. Open NBA Top Shot`);
+   const img=document.createElement('img');img.src=`https://assets.nbatopshot.com/media/${sale.momentId}/image?width=256&format=webp`;img.alt=`Moment #${sale.momentId}`;img.loading='lazy';img.onerror=()=>{img.hidden=true;};
+   const value=document.createElement('strong');value.textContent=format(sale.price,true);
+   const id=document.createElement('span');id.className='moment-id';id.textContent=`#${sale.momentId} ↗`;
+   a.append(img,value,id);el.append(a);
+  }else{const empty=document.createElement('span');empty.className='calendar-missing';empty.textContent=cell.date>data.throughDate?'—':cell.row?.moments?.sales===0?'No sales':'Pending';el.append(empty);}
+  target.append(el);
+ }
+}
+$('calendar-month').addEventListener('change',()=>{if(data&&/^\d{4}-\d{2}$/.test($('calendar-month').value))renderCalendar();});
 for(const [key,chart] of Object.entries(charts))chart.on('datazoom',event=>{
  if(syncing||!data)return;
  syncing=true;

@@ -16,6 +16,24 @@ def sale(index=2, nft='7', price='1.00', asset=MOMENT, tx='tx'):
     return event('listing',index,{'nftType':asset,'purchased':True,'nftID':nft,'salePrice':price,'salePaymentVaultType':VAULT},tx)
 
 class CollectorTests(unittest.TestCase):
+    def test_highest_sale_keeps_moment_identity_and_deterministic_tie(self):
+        a=sale(1,nft='42',price='1200',tx='a')
+        b=sale(1,nft='43',price='1200',tx='b')
+        pack=sale(1,nft='99',price='9000',asset=PACK,tx='c')
+        result=aggregate([b,pack,a,a])
+        self.assertEqual(result['moments']['highestSale'],{'momentId':'42','source':'listing','price':1200,'transactionId':'a'})
+        self.assertIsNone(aggregate([])['moments']['highestSale'])
+
+    def test_historical_top_sale_survives_activity_backfill_merge(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output=Path(directory);(output/'days').mkdir()
+            row=aggregate([sale(nft='42',price='12')]);row.update(date='2026-10-01',status='complete')
+            highest=row['moments'].pop('highestSale')
+            (output/'days/2026-10-01.json').write_text(json.dumps(row))
+            (output/'top-sales.json').write_text(json.dumps({'2026-10-01':highest}))
+            result=build_dataset(output,datetime(2026,10,2,12,tzinfo=timezone.utc))
+            self.assertEqual(result['days'][0]['moments']['highestSale'],highest)
+
     def test_fixed_est_through_dst(self):
         for d in (date(2026,10,1),date(2026,11,1),date(2026,11,2)):
             a,b=day_bounds(d)
