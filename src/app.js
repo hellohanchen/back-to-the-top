@@ -29,6 +29,7 @@ function render(){
  visible=windowDates(data.days,$('range').value,$('start').value,$('end').value);
  const days=data.days;
  $('custom').hidden=$('range').value!=='custom';
+ document.querySelectorAll('[data-range]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.range===$('range').value)));
  $('range-label').textContent=visible.length?`${visible[0].date} — ${visible.at(-1).date}`:'No data in range';
  const channels=[['Moments · Offers','moments','offer'],['Moments · Listings','moments','listing'],['Packs · Listings','packs','listing']];
  plot('volume',days,channels.map(([name,a,s])=>({name,type:'bar',stack:'volume',data:days.map(d=>source(d,a,s)?.volume??null)})),true);
@@ -71,11 +72,13 @@ for(const [key,chart] of Object.entries(charts))chart.on('datazoom',event=>{
  for(const [other,c] of Object.entries(charts))if(other!==key)c.dispatchAction({type:'dataZoom',start,end},{silent:true});
  for(const [k,c] of Object.entries(charts)){const {series,money}=plots[k];c.setOption({series:series.map((_,i)=>({label:labels(k,series,i,money)}))});}
  $('range').value='custom';$('custom').hidden=false;
+ document.querySelectorAll('[data-range]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.range==='custom')));
  $('start').value=data.days[lo].date;$('end').value=data.days[hi].date;
  $('range-label').textContent=`${data.days[lo].date} — ${data.days[hi].date}`;
  for(const k of Object.keys(charts)){const el=$(k+'-chart');el.dataset.start=data.days[lo].date;el.dataset.end=data.days[hi].date;el.dataset.days=hi-lo+1;}
  syncing=false;
 });
+document.querySelectorAll('[data-range]').forEach(b=>b.addEventListener('click',()=>{$('range').value=b.dataset.range;render();}));
 for(const id of ['range','start','end'])$(id).addEventListener('change',render);
 new ResizeObserver(()=>Object.values(charts).forEach(c=>c.resize())).observe($('main'));
 async function load(){try{const r=await fetch('/data/daily.json',{cache:'no-cache'});if(!r.ok)throw Error('Data unavailable');data=await r.json();for(const id of ['start','end']){$(id).min=data.startDate;$(id).max=data.throughDate;} $('start').value=data.startDate;$('end').value=data.throughDate;render();}catch(e){$('notice').hidden=false;$('notice').textContent='Daily data could not be loaded. Please refresh.';console.error(e);}
