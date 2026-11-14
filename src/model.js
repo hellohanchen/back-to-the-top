@@ -25,3 +25,8 @@ export function csvFor(days, asset) {
   const header = ['date_EST','asset','status','volume_usd','sales','active_addresses','buyers','sellers','average_usd','moments_locked','moments_unlocked'];
   return [header.join(','), ...days.map(d => { const v=values(d,asset); return [d.date,asset,d.status,v?.volume??'',v?.sales??'',v?.active??'',v?.buyers??'',v?.sellers??'',v?.average?.toFixed(2)??'',d.locked??'',d.unlocked??''].join(','); })].join('\n');
 }
+
+export function lastClosedDay(now=new Date()) {
+  const est=new Date(now.getTime()-5*60*60*1000);
+  return subtractDays(est.toISOString().slice(0,10),1);
+}

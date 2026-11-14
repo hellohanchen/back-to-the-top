@@ -1,9 +1,13 @@
 const assets = __ASSETS__;
 const headers = {'X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin'};
 export function validateData(data) {
+  if(!data||typeof data!=='object')return false;
   if(data.schemaVersion!==1||data.startDate!=='2026-10-01'||!Array.isArray(data.days)||data.days.length>10000) return false;
-  let previous='';let complete=0;
+  let previous='';let complete=0;let expected=new Date('2026-10-01T12:00:00Z');
   for(const day of data.days){
+    if(!day||typeof day!=='object')return false;
+    if(day.date!==expected.toISOString().slice(0,10))return false;
+    expected.setUTCDate(expected.getUTCDate()+1);
     if(!/^\d{4}-\d{2}-\d{2}$/.test(day.date)||day.date<=previous||!['pending','complete'].includes(day.status))return false;
     previous=day.date;
     if(day.status==='complete'){
@@ -13,7 +17,10 @@ export function validateData(data) {
         const row=day[asset];if(!row)return false;
         for(const key of ['volume','sales','average','median','highest','active','buyers','sellers'])if(!Number.isFinite(row[key])||row[key]<0)return false;
         if(!row.sources)return false;
-        for(const key of ['listing','offer','legacy'])if(!Number.isFinite(row.sources[key]?.volume)||!Number.isFinite(row.sources[key]?.sales))return false;
+        for(const key of ['listing','offer','legacy'])if(!Number.isFinite(row.sources[key]?.volume)||row.sources[key].volume<0||!Number.isInteger(row.sources[key]?.sales)||row.sources[key].sales<0)return false;
+        const sourceSales=Object.values(row.sources).reduce((s,r)=>s+r.sales,0);
+        const sourceVolume=Object.values(row.sources).reduce((s,r)=>s+r.volume,0);
+        if(sourceSales!==row.sales||Math.abs(sourceVolume-row.volume)>.02)return false;
       }
     }
   }

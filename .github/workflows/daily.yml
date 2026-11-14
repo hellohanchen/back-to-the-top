@@ -4,6 +4,10 @@ on:
     - cron: '35 6 * * *'
   workflow_dispatch:
     inputs:
+      refresh_date:
+        description: Optional completed EST date to recollect (YYYY-MM-DD)
+        type: string
+        default: ""
       publish_only:
         description: Verify publishing using the committed dataset without collecting
         type: boolean
@@ -26,7 +30,14 @@ jobs:
         run: python3 -m unittest discover -s tests -v
       - name: Collect missing completed EST days
         if: ${{ !inputs.publish_only }}
-        run: python3 collector/scan.py --workers 16 --latest-first
+        env:
+          REFRESH_DATE: ${{ inputs.refresh_date }}
+        run: |
+          if [ -n "$REFRESH_DATE" ]; then
+            python3 collector/scan.py --workers 16 --start "$REFRESH_DATE" --end "$REFRESH_DATE" --refresh
+          else
+            python3 collector/scan.py --workers 16 --latest-first
+          fi
       - name: Record verified data
         run: |
           git config user.name 'Back to the Top Data'

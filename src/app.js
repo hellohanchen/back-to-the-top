@@ -2,7 +2,7 @@ import * as echarts from 'echarts/core';
 import { BarChart, LineChart, PieChart } from 'echarts/charts';
 import { GridComponent, TooltipComponent, GraphicComponent, AriaComponent } from 'echarts/components';
 import { SVGRenderer } from 'echarts/renderers';
-import { values, summarize, subtractDays, csvFor } from './model.js';
+import { values, summarize, subtractDays, csvFor, lastClosedDay } from './model.js';
 echarts.use([BarChart,LineChart,PieChart,GridComponent,TooltipComponent,GraphicComponent,AriaComponent,SVGRenderer]);
 const $ = id => document.getElementById(id);
 const money = n => new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:n<100?2:0}).format(n);
@@ -27,8 +27,10 @@ function render() {
   if(!data)return;
   const days=selectedDays(),summary=summarize(days,asset),completed=days.filter(d=>d.status==='complete');
   const pending=days.length-completed.length;
-  $('notice').hidden=!pending;
+  const stale=data.throughDate<lastClosedDay();
+  $('notice').hidden=!pending&&!stale;
   $('notice').textContent=`Backfill in progress · ${completed.length} of ${days.length} selected days complete. Uncollected days remain gaps.`;
+  if(!pending&&stale)$('notice').textContent=`Update delayed · latest dataset ends ${data.throughDate} (fixed EST).`;
   $('k-volume').textContent=summary.count?money(summary.volume):'—';
   $('k-sales').textContent=summary.count?number(summary.sales):'—';
   $('k-active').textContent=summary.count?number(summary.active):'—';
@@ -69,5 +71,5 @@ $('show-more').addEventListener('click',()=>{showAll=true;render();});
 $('download').addEventListener('click',()=>{if(!data)return;const blob=new Blob([csvFor(selectedDays(),asset)],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`back-to-the-top_${asset}_${$('date-from').value}_${$('date-to').value}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
 $('methodology').addEventListener('click',()=>$('methods').showModal());$('close-methods').addEventListener('click',()=>$('methods').close());$('methods').addEventListener('click',e=>{if(e.target===$('methods')){const r=$('methods').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('methods').close();}});
 new ResizeObserver(()=>Object.values(charts).forEach(c=>c.resize())).observe(document.querySelector('.shell'));
-async function load(){try{const response=await fetch('./data/daily.json',{cache:'no-cache'});if(!response.ok)throw new Error('Data unavailable');data=await response.json();if(!Array.isArray(data.days)||data.schemaVersion!==1)throw new Error('Unsupported data');for(const id of ['date-from','date-to']){$(id).max=data.throughDate;$(id).min=data.startDate;}$('sync-status').textContent=data.completedDays===data.totalDays?'DAILY DATA / UPDATED':`BACKFILL / ${data.completedDays} OF ${data.totalDays}`;$('asof-date').textContent=`${data.latestCompleteDate?shortDate(data.latestCompleteDate)+' close':'Awaiting first daily close'} · EST / UTC−5`;setRange(range);}catch(error){$('sync-status').textContent='DATA UNAVAILABLE';$('notice').hidden=false;$('notice').textContent='Daily data could not be loaded. Please refresh to try again.';console.error(error);}}
+async function load(){try{const response=await fetch('./data/daily.json',{cache:'no-cache'});if(!response.ok)throw new Error('Data unavailable');data=await response.json();if(!Array.isArray(data.days)||data.schemaVersion!==1)throw new Error('Unsupported data');for(const id of ['date-from','date-to']){$(id).max=data.throughDate;$(id).min=data.startDate;}$('sync-status').textContent=data.throughDate<lastClosedDay()?'UPDATE DELAYED':data.completedDays===data.totalDays?'DAILY DATA / UPDATED':`BACKFILL / ${data.completedDays} OF ${data.totalDays}`;$('asof-date').textContent=`${data.latestCompleteDate?shortDate(data.latestCompleteDate)+' close':'Awaiting first daily close'} · EST / UTC−5`;setRange(range);}catch(error){$('sync-status').textContent='DATA UNAVAILABLE';$('notice').hidden=false;$('notice').textContent='Daily data could not be loaded. Please refresh to try again.';console.error(error);}}
 load();
