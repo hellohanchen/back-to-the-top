@@ -51,6 +51,7 @@ function renderCalendar(){
   if(!cell){el.classList.add('empty');target.append(el);continue;}
   const date=document.createElement('time');date.dateTime=cell.date;date.textContent=cell.day;el.append(date);
   const sale=cell.row?.moments?.highestSale;
+  if(sale?.playerName){const name=document.createElement('span');name.className='player-name';name.textContent=sale.playerName;date.append(' ',name);}
   if(sale&&/^\d+$/.test(sale.momentId)){
    const a=document.createElement('a');a.href=`https://nbatopshot.com/moment/${sale.momentId}`;a.target='_blank';a.rel='noopener noreferrer';
    a.setAttribute('aria-label',`${cell.date}: Moment ${sale.momentId}, ${format(sale.price,true)}. Open NBA Top Shot`);

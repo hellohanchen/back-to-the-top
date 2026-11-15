@@ -304,6 +304,12 @@ def build_dataset(output, now=None):
     for row in rows:
         if row.get('status') == 'complete' and 'highestSale' not in row['moments'] and row['date'] in historical:
             row['moments']['highestSale'] = historical[row['date']]
+    names_path = output/'player-names.json'
+    names = json.loads(names_path.read_text()) if names_path.exists() else {}
+    for row in rows:
+        sale = row.get('moments', {}).get('highestSale')
+        if sale and sale['momentId'] in names:
+            sale['playerName'] = names[sale['momentId']]
     complete = [r for r in rows if r['status'] == 'complete']
     payload = {'schemaVersion': 1, 'title': 'Back to the Top', 'timezone': 'EST (UTC−05:00)',
                'startDate': str(START), 'throughDate': str(yesterday), 'generatedAt': now.isoformat(),

@@ -8,5 +8,5 @@ await build({ entryPoints: ['src/app.js'], bundle: true, minify: true, outfile: 
 console.log('Built dist/');
 
 let html=await readFile('dist/index.html','utf8');
-for(const file of ['app.js','style.css','icon.svg']){const hash=createHash('sha256').update(await readFile('dist/'+file)).digest('hex').slice(0,12);html=html.replaceAll('/'+file,'/'+file+'?v='+hash);}
+for(const file of ['app.js','style.css','logo.png','favicon.ico','favicon-32.png','favicon-180.png']){const hash=createHash('sha256').update(await readFile('dist/'+file)).digest('hex').slice(0,12);html=html.replaceAll('/'+file,'/'+file+'?v='+hash);}
 await writeFile('dist/index.html',html);
