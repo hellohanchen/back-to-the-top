@@ -69,6 +69,6 @@ export default {
   }
   const file=assets[path==='/'?'/index.html':path];
   if(!file)return new Response('Not found',{status:404,headers});
-  return new Response(request.method==='HEAD'?null:file.body,{headers:{...headers,'Content-Type':file.type,'Cache-Control':(path==='/'||path==='/index.html'||path.includes('/data/'))?'no-cache':'public,max-age=300'}});
+  return new Response(request.method==='HEAD'?null:(file.binary?Uint8Array.from(atob(file.body),c=>c.charCodeAt(0)):file.body),{headers:{...headers,'Content-Type':file.type,'Cache-Control':(path==='/'||path==='/index.html'||path.includes('/data/'))?'no-cache':'public,max-age=300'}});
  }
 };

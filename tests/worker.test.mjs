@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
-const bundle=await build({entryPoints:['worker/index.js'],bundle:true,write:false,format:'esm',define:{__ASSETS__:'{}'}});
+const bundle=await build({entryPoints:['worker/index.js'],bundle:true,write:false,format:'esm',define:{__ASSETS__:JSON.stringify({'/logo.png':{type:'image/png',binary:true,body:Buffer.from([137,80,78,71,0,255]).toString('base64')}})}});
 const {default:worker}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
 const valid={schemaVersion:1,startDate:'2026-10-01',generatedAt:'2026-10-02T07:00:00Z',throughDate:'2026-10-01',days:[{date:'2026-10-01',status:'pending'}],totalDays:1,completedDays:0};
 function store(){let data;return {async get(){return data?{json:async()=>JSON.parse(data),body:data}:null;},async put(k,v){data=v;}};}
@@ -23,4 +23,12 @@ test('expanded channel statistics reject nonfinite and inconsistent prices',asyn
  assert.equal((await worker.fetch(request(data),env)).status,400);
  day.moments.sources.offer.median=9;
  assert.equal((await worker.fetch(request(data),env)).status,400);
+});
+
+test('binary brand assets preserve bytes, MIME, query strings and HEAD',async()=>{
+ const response=await worker.fetch(new Request('https://example.test/logo.png?v=123'),{});
+ assert.equal(response.status,200);assert.equal(response.headers.get('Content-Type'),'image/png');
+ assert.deepEqual([...new Uint8Array(await response.arrayBuffer())],[137,80,78,71,0,255]);
+ const head=await worker.fetch(new Request('https://example.test/logo.png',{method:'HEAD'}),{});
+ assert.equal(head.status,200);assert.equal(await head.text(),'');
 });
