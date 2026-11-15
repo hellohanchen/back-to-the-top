@@ -1,0 +1,35 @@
+name: Cloudflare Pages
+on:
+  workflow_dispatch:
+  workflow_call:
+    secrets:
+      CLOUDFLARE_API_TOKEN:
+        required: true
+  push:
+    branches: [main]
+    paths-ignore: ['public/data/**']
+permissions:
+  contents: read
+concurrency:
+  group: cloudflare-pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Deploy Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 27818ba6b2d932ab7e07af03c9e94427
+        run: npx -y wrangler@4.162.0 pages deploy dist --project-name back-to-the-top --branch main
+      - name: Verify public Cloudflare snapshot
+        run: python3 scripts/verify-cloudflare.py

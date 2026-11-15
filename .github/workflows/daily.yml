@@ -63,3 +63,11 @@ jobs:
       pages: write
       id-token: write
     uses: ./.github/workflows/pages.yml
+
+  cloudflare:
+    needs: collect
+    permissions:
+      contents: read
+    uses: ./.github/workflows/cloudflare.yml
+    secrets:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
