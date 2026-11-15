@@ -51,14 +51,14 @@ function renderCalendar(){
   if(!cell){el.classList.add('empty');target.append(el);continue;}
   const date=document.createElement('time');date.dateTime=cell.date;date.textContent=cell.day;el.append(date);
   const sale=cell.row?.moments?.highestSale;
-  if(sale?.playerName){const name=document.createElement('span');name.className='player-name';name.textContent=sale.playerName;date.append(' ',name);}
   if(sale&&/^\d+$/.test(sale.momentId)){
    const a=document.createElement('a');a.href=`https://nbatopshot.com/moment/${sale.momentId}`;a.target='_blank';a.rel='noopener noreferrer';
-   a.setAttribute('aria-label',`${cell.date}: Moment ${sale.momentId}, ${format(sale.price,true)}. Open NBA Top Shot`);
-   const img=document.createElement('img');img.src=`https://assets.nbatopshot.com/media/${sale.momentId}/image?width=256&format=webp`;img.alt=`Moment #${sale.momentId}`;img.loading='lazy';img.draggable=false;img.onerror=()=>{img.hidden=true;};
+   a.setAttribute('aria-label',`${cell.date}: ${sale.playerName||'Top Moment'}, ${format(sale.price,true)}. Open NBA Top Shot in a new window`);
+   const img=document.createElement('img');img.src=`https://assets.nbatopshot.com/media/${sale.momentId}/image?width=256&format=webp`;img.alt=sale.playerName||'Top Moment';img.loading='lazy';img.draggable=false;img.onerror=()=>{img.hidden=true;};
    const value=document.createElement('strong');value.textContent=format(sale.price,true);
-   const id=document.createElement('span');id.className='moment-id';id.textContent=`#${sale.momentId} ↗`;
-   a.append(img,value,id);el.append(a);
+   a.append(img);
+   if(sale.playerName){const name=document.createElement('span');name.className='player-name';name.textContent=sale.playerName;a.append(name);}
+   a.append(value);el.append(a);
   }else{const empty=document.createElement('span');empty.className='calendar-missing';empty.textContent=cell.date>data.throughDate?'—':cell.row?.moments?.sales===0?'No sales':'Pending';el.append(empty);}
   target.append(el);
  }
