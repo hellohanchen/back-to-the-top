@@ -1,6 +1,6 @@
 # Back to the Top
 
-NBA Top Shot daily on-chain analytics. Source of truth: this private GitHub repository. Sites hosts the dashboard; daily GitHub Actions publishes only aggregated blockchain data to its authenticated update endpoint.
+NBA Top Shot daily on-chain analytics. Public source: https://github.com/hellohanchen/back-to-the-top. Dashboard: https://hellohanchen.github.io/back-to-the-top/. Daily GitHub Actions collects public blockchain data and publishes GitHub Pages plus the existing Sites mirror.
 
 ## Develop
 
@@ -24,9 +24,9 @@ Daily JSON exposes `quality` counters for excluded currencies, unresolved lock e
 
 ## Daily updates
 
-`.github/workflows/daily.yml` runs **06:35 UTC / 01:35 fixed EST**, collects missing completed days, commits summaries and uploads the snapshot. GitHub may delay scheduled runs. Manual dispatch is available for recovery; missing days are automatically caught up. No Codex scheduler is required. Private-repository Actions usage is subject to the account's included minutes; no paid hosting or subscription is configured.
+`.github/workflows/daily.yml` runs **05:00 UTC / 00:00 fixed EST**, collects missing completed days, commits summaries and uploads the snapshot. GitHub may delay scheduled runs. Manual dispatch is available for recovery; missing days are automatically caught up. No Codex scheduler is required. The collector waits up to ten minutes for sealed blocks to reach the day boundary. GitHub scheduling is best effort, so midnight is the scheduled trigger, not a guarantee of exact execution or publication time. This fixed UTC−5 schedule does not follow daylight saving time.
 
-Repository secrets: `DATA_WRITE_KEY` (narrow data-ingestion key), `SITES_SERVICE_TOKEN` (Sites private-service authorization). The same ingestion key is a secret runtime variable in Sites. Neither belongs in source, frontend bundles or logs. The website is publicly accessible; the source repository remains private. Changing audience does not change source repository privacy. Data writes also require the application key even if audience changes later.
+Repository secrets: `DATA_WRITE_KEY` (narrow data-ingestion key), `SITES_SERVICE_TOKEN` (Sites private-service authorization). The same ingestion key is a secret runtime variable in Sites. Neither belongs in source, frontend bundles or logs. Both the website and source repository are public. Data writes also require the application key even if audience changes later.
 
 The Worker serves versioned bundled assets and the latest R2 `daily.json`. Update credentials are accepted only on `/api/data`; writes validate schema, reject stale snapshots and cannot remove completed dates. The publisher reads back and compares the whole snapshot after each write. Source deployments use the Sites packaging workflow; daily updates do not redeploy the app.
 
@@ -35,3 +35,8 @@ The Worker serves versioned bundled assets and the latest R2 `daily.json`. Updat
 Derived from Flow public Access API and an analyst handoff in Han's Huddo. The handoff's two daily CSV files were empty; all published dates are independently re-collected. Original scanner concepts were reviewed and rewritten for safe retries, fixed time boundaries, currency verification and NFT-level participant matching.
 
 Activity coverage v2 monitors the exact event map exposed in `daily.json.activityCoverage`, including cancelled listings, offer cancellation, legacy listing changes, transfers/gifts, locks, burns and pack open/reveal requests. It counts explicitly attributable addresses and unambiguous transaction signers. This is observed activity, not a guarantee of every possible contract interaction; calls without monitored events, collection setup and administrative operations are excluded. Multi-authorizer fallback events remain unattributed and are reported in `quality.unresolvedActivityEvents`. Channel price statistics are computed from individual sales, never averages of daily medians.
+
+
+## GitHub Pages
+
+`.github/workflows/pages.yml` builds the static `dist/` site and deploys it with GitHub Pages Actions. It runs on main source pushes, manual dispatch, and as a reusable job after the daily collector commits fresh data. It checks out the updated main branch, so automated data commits are published even though GitHub does not trigger another workflow from a `GITHUB_TOKEN` push. Relative asset and data URLs support both the repository subpath and the Sites root. Pages has no credentials or write endpoint. Deployment verifies the complete live JSON snapshot against the build. Enable Pages with the GitHub Actions publishing source in repository settings.

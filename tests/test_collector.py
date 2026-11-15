@@ -173,3 +173,20 @@ class CollectorTests(unittest.TestCase):
         self.assertIsNone(resolve_offer_currency(offer,[txevent]))
 
 if __name__=='__main__':unittest.main()
+
+class SealedBoundaryTests(unittest.TestCase):
+    @patch('collector.scan.time.sleep')
+    def test_midnight_waits_for_sealed_boundary(self, sleep):
+        flow=Flow('/tmp/back-to-top-boundary-test')
+        blocks=[{'header':{'height':'1','timestamp':'2026-11-15T04:59:59Z'}},{'header':{'height':'2','timestamp':'2026-11-15T05:00:00Z'}}]
+        with patch.object(flow,'get',side_effect=[[x] for x in blocks]):
+            self.assertEqual(flow.sealed_height_after(datetime(2026,11,15,5,tzinfo=timezone.utc)),2)
+        sleep.assert_called_once_with(30)
+
+    @patch('collector.scan.time.sleep')
+    def test_unsealed_day_fails_without_publishing(self, sleep):
+        flow=Flow('/tmp/back-to-top-boundary-test')
+        with patch.object(flow,'get',return_value=[{'header':{'height':'1','timestamp':'2026-11-15T04:59:59Z'}}]):
+            with self.assertRaises(RuntimeError):
+                flow.sealed_height_after(datetime(2026,11,15,5,tzinfo=timezone.utc),attempts=2)
+        sleep.assert_called_once_with(30)

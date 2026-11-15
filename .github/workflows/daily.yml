@@ -1,7 +1,7 @@
 name: Daily market data
 on:
   schedule:
-    - cron: '35 6 * * *'
+    - cron: '0 5 * * *'
   workflow_dispatch:
     inputs:
       refresh_date:
@@ -55,3 +55,11 @@ jobs:
           DATA_WRITE_KEY: ${{ secrets.DATA_WRITE_KEY }}
           SITES_SERVICE_TOKEN: ${{ secrets.SITES_SERVICE_TOKEN }}
         run: python3 scripts/publish-data.py
+
+  pages:
+    needs: collect
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/pages.yml

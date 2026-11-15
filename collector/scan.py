@@ -103,6 +103,15 @@ class Flow:
                     raise
                 time.sleep(min(2**attempt, 30))
 
+    def sealed_height_after(self, target, attempts=21, delay=30):
+        for attempt in range(attempts):
+            block = self.get('/blocks?height=sealed', cache=False)[0]['header']
+            if parse_time(block['timestamp']) >= target:
+                return int(block['height'])
+            if attempt + 1 < attempts:
+                time.sleep(delay)
+        raise RuntimeError('Sealed chain has not reached the completed day boundary; retry later')
+
     def timestamp(self, height):
         if height not in self.timestamps:
             self.timestamps[height] = parse_time(self.get(f'/blocks?height={height}')[0]['header']['timestamp'])
@@ -353,7 +362,7 @@ def main():
     if args.start < START or end > yesterday or end < args.start:
         parser.error('Range must contain completed EST days on or after 2026-10-01')
     flow = Flow(args.cache, args.workers)
-    high = int(flow.get('/blocks?height=sealed', cache=False)[0]['header']['height'])
+    high = flow.sealed_height_after(day_bounds(end)[1])
     dates = [args.start+timedelta(days=i) for i in range((end-args.start).days+1)]
     if args.latest_first:
         dates.reverse()

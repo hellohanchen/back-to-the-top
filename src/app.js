@@ -85,7 +85,7 @@ document.querySelectorAll('[data-range]').forEach(b=>b.addEventListener('click',
 for(const id of ['range','start','end'])$(id).addEventListener('change',render);
 new ResizeObserver(()=>{for(const [k,c] of Object.entries(charts)){c.resize();if(data&&plots[k]){const {series,money}=plots[k];c.setOption({series:series.map((_,i)=>({label:labels(k,series,i,money)}))});}}}).observe($('main'));
 mobile.addEventListener('change',()=>{if(data)renderCalendar();});
-async function load(){try{const r=await fetch('/data/daily.json',{cache:'no-cache'});if(!r.ok)throw Error('Data unavailable');data=await r.json();for(const id of ['start','end']){$(id).min=data.startDate;$(id).max=data.throughDate;} $('start').value=data.startDate;$('end').value=data.throughDate;render();}catch(e){$('notice').hidden=false;$('notice').textContent='Daily data could not be loaded. Please refresh.';console.error(e);}
+async function load(){try{const r=await fetch('./data/daily.json',{cache:'no-cache'});if(!r.ok)throw Error('Data unavailable');data=await r.json();for(const id of ['start','end']){$(id).min=data.startDate;$(id).max=data.throughDate;} $('start').value=data.startDate;$('end').value=data.throughDate;render();}catch(e){$('notice').hidden=false;$('notice').textContent='Daily data could not be loaded. Please refresh.';console.error(e);}
 
 }
 load();
