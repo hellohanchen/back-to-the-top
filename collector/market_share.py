@@ -71,9 +71,10 @@ def fetch_metadata(ids):
             if set(found)-set(ids):
                 raise ValueError('Unexpected NFT metadata identity')
             return {mid: found.get(mid, {}) for mid in ids}
-        except (subprocess.SubprocessError, ValueError, KeyError):
+        except (subprocess.SubprocessError, ValueError, KeyError) as error:
             if attempt == 4:
-                raise RuntimeError('Public Top Shot metadata lookup failed; no partial day published') from None
+                detail = str(error) if not isinstance(error, subprocess.CalledProcessError) else error.stderr.strip()
+                raise RuntimeError('Public Top Shot metadata lookup failed; no partial day published: '+detail) from None
             time.sleep(2**attempt)
 
 

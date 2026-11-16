@@ -2,6 +2,8 @@ name: Daily market data
 on:
   schedule:
     - cron: '0 5 * * *'
+    # Catch up if the midnight schedule is delayed or dropped.
+    - cron: '17 6 * * *'
   workflow_dispatch:
     inputs:
       refresh_date:
@@ -28,6 +30,11 @@ jobs:
           python-version: '3.12'
       - name: Verify collector
         run: python3 -m unittest discover -s tests -v
+      - uses: actions/cache@v4
+        with:
+          path: .cache/flow
+          key: flow-v1-${{ github.run_id }}
+          restore-keys: flow-v1-
       - name: Collect missing completed EST days
         if: ${{ !inputs.publish_only }}
         env:
@@ -38,6 +45,11 @@ jobs:
           else
             python3 collector/scan.py --workers 16 --latest-first
           fi
+      - uses: actions/cache/save@v4
+        if: ${{ always() && !inputs.publish_only }}
+        with:
+          path: .cache/flow
+          key: flow-v1-${{ github.run_id }}
       - uses: actions/cache@v4
         with:
           path: |
