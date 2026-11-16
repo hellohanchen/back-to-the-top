@@ -32,7 +32,7 @@ class Shares(unittest.TestCase):
         from collector.market_share import canonical_players
         players={'players':[{'playerName':'Stephen Curry','playerId':'201939'},{'playerName':'Nikola Jokić','playerId':'203999'}]}
         alias={'player':{'player':{'playerName':'Steph Curry','playerId':'201939'}}}
-        with tempfile.TemporaryDirectory() as folder, patch('collector.market_share.subprocess.run', side_effect=[SimpleNamespace(stdout=json.dumps(players)),SimpleNamespace(stdout=json.dumps(alias))]):
+        with tempfile.TemporaryDirectory() as folder, patch('collector.market_share.SEED',Path(folder)), patch('collector.market_share.subprocess.run', side_effect=[SimpleNamespace(stdout=json.dumps(players)),SimpleNamespace(stdout=json.dumps(alias))]):
             result=canonical_players({'a':{'playerName':'Steph Curry'},'b':{'playerName':'Stephen Curry'},'c':{'playerName':'Nikola Jokic'}},Path(folder))
         self.assertEqual(result['a']['playerId'],result['b']['playerId'])
         self.assertEqual(result['c']['playerName'],'Nikola Jokić')

@@ -215,7 +215,9 @@ def main():
     args = parser.parse_args()
     path = args.cache/'metadata.json'
     metadata = seed_metadata()
-    if path.exists():metadata.update(json.loads(path.read_text()))
+    if path.exists():
+        metadata.update({mid: info for mid, info in json.loads(path.read_text()).items()
+                         if info.get('setId') or not metadata.get(mid, {}).get('setId')})
     flow = Flow(args.flow_cache, 12)
     identities_path = args.cache/'chain-identities.json'
     identities = json.loads(identities_path.read_text()) if identities_path.exists() else {}
@@ -232,13 +234,13 @@ def main():
         if not args.sales_dir:
             identities.update(index_day(day, flow))
             atomic_json(identities_path, identities)
-        needed = {':'.join(map(str, identities[mid])): identities[mid] for mid in ids if mid in identities and mid not in metadata}
+        needed = {':'.join(map(str, identities[mid])): identities[mid] for mid in ids if mid in identities and not metadata.get(mid, {}).get('setId')}
         missing_pairs = [value for key, value in needed.items() if key not in pair_meta]
         for start in range(0, len(missing_pairs), 100):
             pair_meta.update(chain_metadata(missing_pairs[start:start+100]))
             atomic_json(pair_path, pair_meta)
         for mid in ids:
-            if mid not in metadata and mid in identities:
+            if mid in identities and not metadata.get(mid, {}).get('setId'):
                 metadata[mid] = pair_meta[':'.join(map(str, identities[mid]))]
         missing = sorted(ids-metadata.keys())
         batches = [missing[start:start+100] for start in range(0, len(missing), 100)]
