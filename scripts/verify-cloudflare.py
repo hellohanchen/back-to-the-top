@@ -5,7 +5,7 @@ import subprocess
 import time
 
 root = Path('dist')
-files = sorted(root.rglob('*.json')) + [root / 'index.html', root / 'logo.png', root / 'favicon.ico']
+files = sorted(p for p in root.rglob('*.json') if p.name != '_routes.json') + [root / 'index.html', root / 'logo.png', root / 'favicon.ico', root / 'favicon.svg', root / 'challenge.html', root / 'challenge.js', root / 'challenge.css']
 
 
 def verify(path):
