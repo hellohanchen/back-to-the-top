@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {dailyGroups,shareSeries} from '../src/market-share.js';
+import {dailyGroups,shareSeries,rangeGroups} from '../src/market-share.js';
 const day=(date,volume,groups)=>({date,status:'complete',marketShare:{version:1,volume,sets:groups}});
 test('named area series keep identity when daily leaders change; others preserves denominator',()=>{
  const days=[day('a',100,[{id:'a',name:'A',volume:60},{id:'b',name:'B',volume:30},{id:'c',name:'C',volume:10}]),day('b',200,[{id:'a',name:'A',volume:50},{id:'b',name:'B',volume:150}])];
  const series=shareSeries(days,days,'sets',1);
- assert.deepEqual(series.map(s=>s.name),['B','A','Others']);
- assert.deepEqual(series.map(s=>s.data.map(d=>d.value)),[[0,75],[60,0],[40,25]]);
+ assert.deepEqual(series.map(s=>s.name),['B','Others']);
+ assert.deepEqual(series.map(s=>s.data.map(d=>d.value)),[[30,75],[70,25]]);
  assert.ok(series.every(s=>s.type==='line'&&s.areaStyle.opacity>0));
  assert.equal(dailyGroups(days[1],'sets')[0].share,25);
 });
@@ -19,4 +19,11 @@ test('only five daily leaders plus Others are nonzero; missing and zero days are
  assert.ok(Math.abs(series.reduce((sum,s)=>sum+s.data[0].value,0)-100)<1e-10);
  assert.equal(series[5].data[0].volume,6);
  assert.ok(series.every(s=>s.data[1].value===null&&s.data[2].value===null));
+});
+
+test('range ranking weights revenue rather than averaging daily percentages and follows selected dates',()=>{
+ const days=[day('a',100,[{id:'a',name:'A',volume:100}]),day('b',300,[{id:'b',name:'B',volume:300}])];
+ assert.deepEqual(rangeGroups(days,'sets').map(g=>[g.name,g.share]),[['B',75],['A',25]]);
+ assert.deepEqual(shareSeries(days,[days[0]],'sets',1).map(s=>s.name),['A','Others']);
+ assert.deepEqual(rangeGroups([{status:'pending'}],'sets'),[]);
 });

@@ -4,7 +4,7 @@ import {GridComponent,TooltipComponent,LegendComponent,DataZoomComponent} from '
 import {SVGRenderer} from 'echarts/renderers';
 import {labelIndices} from './labels.js';
 import {monthCells} from './calendar.js';
-import {dailyGroups,shareSeries} from './market-share.js';
+import {dailyGroups,shareSeries,rangeGroups} from './market-share.js';
 import {windowDates} from './range.js';
 echarts.use([BarChart,LineChart,GridComponent,TooltipComponent,LegendComponent,DataZoomComponent,SVGRenderer]);
 const $=id=>document.getElementById(id);
@@ -58,9 +58,20 @@ function renderShareTable(key){
   body.append(row);
  }
 }
+function renderPlayerRanking(){
+ const groups=rangeGroups(visible,'players').slice(0,10);
+ charts.players.setOption({animation:false,textStyle:{fontFamily:'Inter, sans-serif'},grid:{left:8,right:48,top:12,bottom:30,containLabel:true},
+ tooltip:{trigger:'item',renderMode:'richText',confine:true,formatter:p=>p.name+'\n'+p.value.toFixed(2)+'% · '+format(p.data.volume,true)},
+ xAxis:{type:'value',axisLabel:{color:'#8591a3',formatter:v=>v+'%'},splitLine:{lineStyle:{color:'#232a34'}}},
+ yAxis:{type:'category',inverse:true,data:groups.map(g=>g.name),axisTick:{show:false},axisLine:{show:false},axisLabel:{color:'#c8d0dc',fontSize:11,width:mobile.matches?105:180,overflow:'truncate'}},
+ series:[{type:'bar',barMaxWidth:18,itemStyle:{color:'#3b82f6',borderRadius:[0,3,3,0]},label:{show:true,position:'right',color:'#a4adbb',fontSize:11,formatter:p=>p.value.toFixed(1)+'%'},data:groups.map(g=>({value:g.share,volume:g.volume}))}]},true);
+ $('players-chart').setAttribute('aria-label','Top 10 players by Moment revenue in selected range: '+groups.map(g=>g.name+' '+g.share.toFixed(1)+'%').join(', '));
+ $('players-context').textContent=groups.length?'Selected range · Top 10 · '+groups.reduce((sum,g)=>sum+g.share,0).toFixed(1)+'% combined':'No sales in selected range';
+}
 function renderShares(){
  for(const key of ['sets','players']){
-  plot(key,data.days,shareSeries(data.days,visible,key));
+  if(key==='sets')plot(key,data.days,shareSeries(data.days,visible,key));
+  else renderPlayerRanking();
   const select=$(key+'-day'),old=select.value;select.replaceChildren();
   for(const day of visible){const option=document.createElement('option');option.value=day.date;option.textContent=day.date;select.append(option);}
   select.value=visible.some(d=>d.date===old)?old:visible.at(-1)?.date||'';
@@ -98,7 +109,7 @@ for(const [key,chart] of Object.entries(charts))chart.on('datazoom',event=>{
  const lo=Math.round(start/100*(data.days.length-1)),hi=Math.round(end/100*(data.days.length-1));
  visible=data.days.slice(lo,hi+1);
  for(const [other,c] of Object.entries(charts))if(other!==key)c.dispatchAction({type:'dataZoom',start,end},{silent:true});
- for(const [k,c] of Object.entries(charts)){const {series,money}=plots[k];c.setOption({series:series.map((_,i)=>({label:labels(k,series,i,money)}))});}
+ for(const [k,c] of Object.entries(charts)){if(!plots[k])continue;const {series,money}=plots[k];c.setOption({series:series.map((_,i)=>({label:labels(k,series,i,money)}))});}
  $('range').value='custom';$('custom').hidden=false;
  document.querySelectorAll('[data-range]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.range==='custom')));
  $('start').value=data.days[lo].date;$('end').value=data.days[hi].date;
