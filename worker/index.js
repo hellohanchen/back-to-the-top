@@ -13,6 +13,19 @@ export function validateData(data) {
     if(day.status==='complete'){
       complete++;
       for(const key of ['active','buyers','sellers','locked','unlocked'])if(!Number.isFinite(day[key])||day[key]<0)return false;
+      if(day.marketShare){
+        const share=day.marketShare;
+        if(share.version!==1||share.denominator!=='moments-usd-all-channels'||share.volume!==day.moments?.volume||share.sales!==day.moments?.sales)return false;
+        for(const dimension of ['sets','players']){
+          if(!Array.isArray(share[dimension]))return false;
+          const ids=new Set();let volume=0,sales=0;
+          for(const group of share[dimension]){
+            if(typeof group.id!=='string'||!group.id||ids.has(group.id)||typeof group.name!=='string'||!group.name||!Number.isFinite(group.volume)||group.volume<0||!Number.isInteger(group.sales)||group.sales<0)return false;
+            ids.add(group.id);volume+=group.volume;sales+=group.sales;
+          }
+          if(Math.abs(volume-share.volume)>.02||sales!==share.sales)return false;
+        }
+      }
       for(const asset of ['moments','packs']){
         const row=day[asset];if(!row)return false;
         for(const key of ['volume','sales','average','median','highest','active','buyers','sellers'])if(!Number.isFinite(row[key])||row[key]<0)return false;
@@ -48,8 +61,8 @@ export default {
     if(request.method!=='POST')return new Response('Method not allowed',{status:405,headers:{Allow:'POST',...headers}});
     if(!await secretMatches(request.headers.get('Authorization'),`Bearer ${env.DATA_WRITE_KEY||''}`)||!env.DATA_WRITE_KEY)return new Response('Unauthorized',{status:401,headers});
     if(!env.BUCKET)return new Response('Storage unavailable',{status:503,headers});
-    if(Number(request.headers.get('Content-Length')||0)>2_000_000)return new Response('Too large',{status:413,headers});
-    const body=await request.text();if(body.length>2_000_000)return new Response('Too large',{status:413,headers});
+    if(Number(request.headers.get('Content-Length')||0)>20_000_000)return new Response('Too large',{status:413,headers});
+    const body=await request.text();if(body.length>20_000_000)return new Response('Too large',{status:413,headers});
     let data;try{data=JSON.parse(body);}catch{return new Response('Invalid JSON',{status:400,headers});}
     if(!validateData(data))return new Response('Invalid dataset',{status:400,headers});
     const existing=await env.BUCKET.get('daily.json');

@@ -32,3 +32,15 @@ test('binary brand assets preserve bytes, MIME, query strings and HEAD',async()=
  const head=await worker.fetch(new Request('https://example.test/logo.png',{method:'HEAD'}),{});
  assert.equal(head.status,200);assert.equal(await head.text(),'');
 });
+
+test('published revenue groups reconcile and cannot omit unknown sales',async()=>{
+ const fs=await import('node:fs/promises');
+ const data=JSON.parse(await fs.readFile('public/data/daily.json','utf8'));
+ const env={DATA_WRITE_KEY:'secret',BUCKET:store()};
+ assert.equal((await worker.fetch(request(data),env)).status,200);
+ const day=data.days.find(d=>d.marketShare);
+ if(day){
+  day.marketShare.sets[0].volume+=1;
+  assert.equal((await worker.fetch(request(data),env)).status,400);
+ }
+});

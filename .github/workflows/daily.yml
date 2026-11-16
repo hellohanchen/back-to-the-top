@@ -38,6 +38,16 @@ jobs:
           else
             python3 collector/scan.py --workers 16 --latest-first
           fi
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .cache/market-share/metadata.json
+            .cache/market-share/player-aliases.json
+            .cache/market-share/pairs.json
+          key: market-metadata-v1-${{ github.run_id }}
+          restore-keys: market-metadata-v1-
+      - name: Reconcile Set and player revenue shares
+        run: python3 -m collector.market_share
       - name: Resolve calendar player names
         run: python3 -m collector.player_names
       - name: Record verified data

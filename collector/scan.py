@@ -324,6 +324,13 @@ def build_dataset(output, now=None):
                'startDate': str(START), 'throughDate': str(yesterday), 'generatedAt': now.isoformat(),
                'completedDays': len(complete), 'totalDays': len(rows),
                'latestCompleteDate': complete[-1]['date'] if complete else None,
+               'marketShareCoverage': {
+                   'version': 1,
+                   'completedDays': sum(r.get('marketShare', {}).get('version') == 1 for r in complete),
+                   'denominator': 'All monitored USD Moment sales: offers, listings and legacy; Packs excluded.',
+                   'metadataSources': ['https://api.production.atlas.dapperlabs.com/public/atlas.v1.NFTService/GetNFTs', 'Flow TopShot MomentMinted and NFT.ResourceDestroyed events plus current contract Play/Set metadata'],
+                   'limitations': ['Metadata is resolved at collection time, not historical sale time.', 'Missing Set/player metadata is retained as Unattributed, included in the denominator.', 'Set IDs distinguish the same set name across series; players use official names with current player-directory alias resolution where available.'],
+               },
                'activityCoverage': {
                    'version': 'monitored-topshot-events-v2',
                    'completedDays': sum(r.get('activityScope') == 'monitored-topshot-events-v2' for r in complete),

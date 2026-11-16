@@ -40,3 +40,11 @@ Activity coverage v2 monitors the exact event map exposed in `daily.json.activit
 ## GitHub Pages
 
 `.github/workflows/pages.yml` builds the static `dist/` site and deploys it with GitHub Pages Actions. It runs on main source pushes, manual dispatch, and as a reusable job after the daily collector commits fresh data. It checks out the updated main branch, so automated data commits are published even though GitHub does not trigger another workflow from a `GITHUB_TOKEN` push. Relative asset and data URLs support both the repository subpath and the Sites root. Pages has no credentials or write endpoint. Deployment verifies the complete live JSON snapshot against the build. Enable Pages with the GitHub Actions publishing source in repository settings.
+
+## Daily market share
+
+The fourth and fifth charts split each day's **Moment USD revenue** by Set and player (offers, listings and legacy sales; Packs excluded). The eight largest categories over the selected date range get stable series within that view; all remaining revenue stays in Other. Expand All sets / All players and select a day to see every category, amount and share. Zero-sales or pending days are gaps, not fabricated 100% totals.
+
+Run `python3 -m collector.market_share` after collecting. It replays the three sale event types from the same Flow cache, checks each channel's count and amount against the existing day, then enriches identities using the official Top Shot site's public Atlas NFT service. Burned/minted identities can be recovered from Flow events and the TopShot contract's Play/Set getters. Metadata is current at enrichment time; unavailable metadata remains Unattributed in the denominator and quality counts. Sets use IDs (series are kept separate); player-directory names and verified aliases normalize names such as Steph/Stephen Curry and diacritics. Historical names without a current player match remain as recorded.
+
+The daily workflow runs this enrichment before committing/publishing and caches only public metadata. Failed requests or reconciliation failures stop publication; no credentials are required for metadata reads. `daily.json.marketShareCoverage` records coverage and provenance. The Sites ingestion limit is 20 MB to accommodate the full category history; grouping sums are validated on writes.
