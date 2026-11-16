@@ -14,6 +14,15 @@ from collector.scan import Flow, USD, asset_for, resolve_offer_currency, atomic_
 
 METADATA_URL = 'https://api.production.atlas.dapperlabs.com/public/atlas.v1.NFTService/GetNFTs'
 VERSION = 1
+SEED = Path(__file__).parent / "metadata"
+
+def seed_metadata():
+    path = SEED/"moments.json"
+    if not path.exists():return {}
+    data = json.loads(path.read_text())
+    return {mid: {"setId":values[0], "setName":data["sets"].get(values[0],["",""])[0],
+                  "seriesName":data["sets"].get(values[0],["",""])[1],
+                  "playerId":values[1], "playerName":values[1]} for mid,values in data["moments"].items()}
 
 
 def sale_rows(events, flow):
@@ -114,7 +123,8 @@ def index_day(day, flow):
 
 def canonical_players(metadata, cache):
     path = cache/'player-aliases.json'
-    aliases = json.loads(path.read_text()) if path.exists() else {}
+    aliases = json.loads((SEED/'player-aliases.json').read_text()) if (SEED/'player-aliases.json').exists() else {}
+    if path.exists():aliases.update(json.loads(path.read_text()))
     def rpc(method, body):
         response = subprocess.run(['curl', '-fsSL', '--retry', '3', '--max-time', '60',
             'https://api.production.atlas.dapperlabs.com/public/atlas.v1.PlayerService/'+method,
@@ -146,8 +156,8 @@ def canonical_players(metadata, cache):
 
 def canonical_sets(metadata, cache):
     path = cache/'series.json'
-    if path.exists():
-        series = json.loads(path.read_text())
+    if path.exists() or (SEED/'series.json').exists():
+        series = json.loads((path if path.exists() else SEED/'series.json').read_text())
     else:
         response = subprocess.run(['curl', '-fsSL', '--retry', '3', '--max-time', '60',
             'https://api.production.atlas.dapperlabs.com/public/atlas.v1.SeriesService/GetAllSeries',
@@ -204,7 +214,8 @@ def main():
     parser.add_argument('--refresh-groups', action='store_true')
     args = parser.parse_args()
     path = args.cache/'metadata.json'
-    metadata = json.loads(path.read_text()) if path.exists() else {}
+    metadata = seed_metadata()
+    if path.exists():metadata.update(json.loads(path.read_text()))
     flow = Flow(args.flow_cache, 12)
     identities_path = args.cache/'chain-identities.json'
     identities = json.loads(identities_path.read_text()) if identities_path.exists() else {}

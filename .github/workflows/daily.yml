@@ -60,6 +60,15 @@ jobs:
           restore-keys: market-metadata-v1-
       - name: Reconcile Set and player revenue shares
         run: python3 -m collector.market_share
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: unpublished-market-data
+          include-hidden-files: true
+          path: |
+            public/data
+            .cache/market-share/sales
+          retention-days: 7
       - name: Resolve calendar player names
         run: python3 -m collector.player_names
       - name: Record verified data
