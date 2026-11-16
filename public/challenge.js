@@ -12,6 +12,8 @@ function render(data){
   if(!finished)heading.append(el('span','Live','live-badge'));
   else if(!confirmed)heading.append(el('span','Awaiting confirmation','pending-badge'));
   card.append(heading,el('p',s.dates.join(' / '),'meta'));
+  const requirement=s.qualification||data.qualification;
+  if(requirement)card.append(el('p',requirement.split('. ')[0]+'.','requirement'));
   const rows=visibleRows(s);
   if(!rows.length)card.append(el('p','No results yet.','empty'));
   else{const table=el('table');table.setAttribute('aria-label',s.label+' results');
