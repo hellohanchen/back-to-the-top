@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {dailyGroups,shareSeries,rangeGroups} from '../src/market-share.js';
+import {dailyGroups,shareSeries,rangeGroups,shortSetName} from '../src/market-share.js';
 const day=(date,volume,groups)=>({date,status:'complete',marketShare:{version:1,volume,sets:groups}});
 test('named area series keep identity when daily leaders change; others preserves denominator',()=>{
  const days=[day('a',100,[{id:'a',name:'A',volume:60},{id:'b',name:'B',volume:30},{id:'c',name:'C',volume:10}]),day('b',200,[{id:'a',name:'A',volume:50},{id:'b',name:'B',volume:150}])];
@@ -26,4 +26,12 @@ test('range ranking weights revenue rather than averaging daily percentages and 
  assert.deepEqual(rangeGroups(days,'sets').map(g=>[g.name,g.share]),[['B',75],['A',25]]);
  assert.deepEqual(shareSeries(days,[days[0]],'sets',1).map(s=>s.name),['A','Others']);
  assert.deepEqual(rangeGroups([{status:'pending'}],'sets'),[]);
+});
+
+test('set legend abbreviations preserve series identity and unknown names',()=>{
+ assert.equal(shortSetName('Rookie Debut · Series 2026-27'),'RD · S26');
+ assert.equal(shortSetName('Rookie Debut · Series 26-27'),'RD · S26');
+ assert.equal(shortSetName('Fresh Threads · Series 3'),'FT · S3');
+ assert.equal(shortSetName('Unknown · Summer 2021'),'Unknown · Summer 2021');
+ assert.equal(shortSetName('Others'),'Others');
 });

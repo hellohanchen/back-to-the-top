@@ -29,3 +29,8 @@ export function rangeGroups(days,dimension){
  }
  return [...groups.values()].sort((a,b)=>b.volume-a.volume||a.id.localeCompare(b.id)).map(g=>({...g,share:total?g.volume/total*100:0}));
 }
+
+export function shortSetName(name){
+ const names={'Rookie Debut':'RD','Season Tip-Off':'STO','Run It Back: Origins':'RIBO','Fresh Threads':'FT','Base Set':'Base'};
+ return name.split(' · ').map(part=>names[part]||part.replace(/^Series (?:20)?(\d{2})-\d{2}$/, 'S$1').replace(/^Series (\d+)$/, 'S$1')).join(' · ');
+}
