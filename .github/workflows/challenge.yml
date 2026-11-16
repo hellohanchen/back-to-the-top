@@ -1,0 +1,35 @@
+name: Challenge tracker
+on:
+  schedule:
+    - cron: '2-57/5 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: challenge-tracker
+  cancel-in-progress: false
+jobs:
+  collect:
+    if: ${{ vars.CHALLENGE_TRACKER_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: collector/challenge-requirements.txt
+      - run: pip install -r collector/challenge-requirements.txt
+      - id: cache-date
+        run: echo "hour=$(date -u +%Y%m%d%H)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: .cache/challenge/games
+          key: challenge-games-${{ steps.cache-date.outputs.hour }}
+          restore-keys: challenge-games-
+      - run: python -m collector.challenge
+      - name: Publish to Cloudflare KV and verify public snapshot
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: python scripts/challenge-storage.py publish

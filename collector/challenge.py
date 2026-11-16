@@ -1,0 +1,91 @@
+"""NBA statistics for explicitly configured Wheel slots; no official eligibility inference."""
+import argparse
+from datetime import datetime, timezone
+import json
+import math
+from pathlib import Path
+import time
+
+METRICS = {'STL': ('steals',), 'PRA': ('points','reboundsTotal','assists'),
+           'FGM': ('fieldGoalsMade',), 'PTS': ('points',), 'PMP': ('plusMinusPoints',),
+           'AR': ('assists','reboundsTotal')}
+
+
+def rank(games, metric):
+    rows=[]
+    for game in games:
+        if game['gameStatus'] not in (2,3):
+            continue
+        for side in ('homeTeam','awayTeam'):
+            for p in game[side]['players']:
+                if str(p.get('played')) != '1':
+                    continue
+                values=[p['statistics'][k] for k in METRICS[metric]]
+                if any(not isinstance(v,(int,float)) or not math.isfinite(v) for v in values):
+                    raise ValueError('Invalid statistics')
+                rows.append({'playerId':p['personId'],'name':p['name'], 'team':game[side]['teamTricode'],
+                             'gameId':game['gameId'],'value':sum(values),'gameStatus':game['gameStatus']})
+    rows.sort(key=lambda p:(-p['value'],p['playerId'],p['gameId']))
+    last=None
+    for i,row in enumerate(rows):
+        if row['value']!=last:
+            position=i+1
+        last=row['value'];row['rank']=position
+    return [r for r in rows if r['rank']<=10]
+
+
+def build(config, games, date_ids, now):
+    slots=[]
+    for definition in config['slots']:
+        ids=[gid for date in definition['dates'] for gid in date_ids.get(date,[])]
+        if not ids:
+            raise ValueError('No scheduled games found for configured slot')
+        missing=[gid for gid in ids if gid not in games]
+        if missing:
+            raise ValueError('Incomplete game coverage')
+        selected=[games[gid] for gid in ids]
+        slots.append({**definition,'games':len(ids),'finishedGames':sum(g['gameStatus']==3 for g in selected),
+                      'rankings':rank(selected,definition['metric'])})
+    return {'schemaVersion':1,'generatedAt':now,'title':config['title'],'source':config['source'],
+            'qualification':config['qualification'],'aggregation':'Highest single-game value. Weekend dates and aggregation are provisional pending full official rules.',
+            'throughDate':max(d for s in config['slots'] for d in s['dates']),'slots':slots}
+
+
+def main():
+    import requests
+    from nba_api.live.nba.endpoints import boxscore
+    from nba_api.live.nba.library.http import STATS_HEADERS
+    parser=argparse.ArgumentParser();parser.add_argument('--output',default='.cache/challenge/latest.json');args=parser.parse_args()
+    config=json.loads(Path('collector/wheel.json').read_text())
+    schedule=requests.get('https://cdn.nba.com/static/json/staticData/scheduleLeagueV2.json',headers=STATS_HEADERS,timeout=30)
+    schedule.raise_for_status()
+    wanted={d for s in config['slots'] for d in s['dates']};date_ids={};games={}
+    cache=Path('.cache/challenge/games');cache.mkdir(parents=True,exist_ok=True)
+    for date in schedule.json()['leagueSchedule']['gameDates']:
+        key=datetime.strptime(date['gameDate'][:10],'%m/%d/%Y').date().isoformat()
+        if key not in wanted:continue
+        date_ids[key]=[g['gameId'] for g in date['games']]
+        for item in date['games']:
+            gid=item['gameId']
+            if len(gid)!=10 or not gid.isdigit():raise ValueError('Invalid game ID')
+            if item['gameStatus']==1:
+                games[gid]={**item,'homeTeam':{**item['homeTeam'],'players':[]},'awayTeam':{**item['awayTeam'],'players':[]}}
+                continue
+            cached=cache/f'{gid}.json';game=None
+            # Finished games are rechecked daily for NBA statistical corrections.
+            if cached.exists() and time.time()-cached.stat().st_mtime<86400:
+                previous=json.loads(cached.read_text())
+                if previous['gameStatus']==3:game=previous
+            if game is None:
+                game=boxscore.BoxScore(game_id=gid,timeout=30).get_dict()['game']
+                if game['gameId']!=gid:raise ValueError('Wrong game returned')
+                cached.write_text(json.dumps(game))
+            games[gid]=game
+    now=datetime.now(timezone.utc).isoformat()
+    result=build(config,games,date_ids,now)
+    out=Path(args.output);out.parent.mkdir(parents=True,exist_ok=True)
+    temporary=out.with_suffix('.tmp');temporary.write_text(json.dumps(result,ensure_ascii=False));temporary.replace(out)
+    print(f"Built {len(result['slots'])} slots from {len(games)} games at {now}")
+
+
+if __name__=='__main__':main()
