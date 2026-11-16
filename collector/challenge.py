@@ -24,14 +24,17 @@ def rank(games, metric):
                 if any(not isinstance(v,(int,float)) or not math.isfinite(v) for v in values):
                     raise ValueError('Invalid statistics')
                 rows.append({'playerId':p['personId'],'name':p['name'], 'team':game[side]['teamTricode'],
-                             'gameId':game['gameId'],'value':sum(values),'gameStatus':game['gameStatus']})
+                             'gameId':game['gameId'],'value':sum(values),'gameStatus':game['gameStatus'],
+                             'game':{'home':game['homeTeam']['teamTricode'],'away':game['awayTeam']['teamTricode'],
+                                     'homeScore':game['homeTeam'].get('score'),'awayScore':game['awayTeam'].get('score'),
+                                     'period':game.get('period'),'clock':game.get('gameClock'),'statusText':game.get('gameStatusText')}})
     rows.sort(key=lambda p:(-p['value'],p['playerId'],p['gameId']))
     last=None
     for i,row in enumerate(rows):
         if row['value']!=last:
             position=i+1
         last=row['value'];row['rank']=position
-    return [r for r in rows if r['rank']<=10]
+    return rows
 
 
 def build(config, games, date_ids, now):
@@ -44,8 +47,13 @@ def build(config, games, date_ids, now):
         if missing:
             raise ValueError('Incomplete game coverage')
         selected=[games[gid] for gid in ids]
-        slots.append({**definition,'games':len(ids),'finishedGames':sum(g['gameStatus']==3 for g in selected),
-                      'rankings':rank(selected,definition['metric'])})
+        expected=definition.get('expectedQualifiers',1)
+        if not isinstance(expected,int) or expected<1:raise ValueError('Invalid qualifier count')
+        rows=rank(selected,definition['metric'])
+        qualifiers=sum(r['rank']<=expected for r in rows)
+        rows=rows[:max(expected*3,5,qualifiers,len(definition.get('officialPlayers',[])))]
+        slots.append({**definition,'expectedQualifiers':expected,'games':len(ids),'finishedGames':sum(g['gameStatus']==3 for g in selected),
+                      'rankings':rows})
     return {'schemaVersion':1,'generatedAt':now,'title':config['title'],'source':config['source'],
             'qualification':config['qualification'],'aggregation':'Highest single-game value. Weekend dates and aggregation are provisional pending full official rules.',
             'throughDate':max(d for s in config['slots'] for d in s['dates']),'slots':slots}

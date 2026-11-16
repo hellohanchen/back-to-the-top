@@ -3,11 +3,80 @@
   "source": "Operator-provided Top Shot screenshot, 2026-11-15",
   "qualification": "Lock a Top Shot Debut, Rare, Legendary or Ultimate Moment. Moment eligibility is not yet automatically checked.",
   "slots": [
-    {"id":"mon","label":"Monday · Steals","dates":["2026-11-09"],"metric":"STL","officialPlayers":["Luka Dončić"]},
-    {"id":"tue","label":"Tuesday · Points + rebounds + assists","dates":["2026-11-10"],"metric":"PRA","officialPlayers":["Franz Wagner"]},
-    {"id":"wed","label":"Wednesday · Field goals made","dates":["2026-11-11"],"metric":"FGM","officialPlayers":["Franz Wagner","Victor Wembanyama"]},
-    {"id":"thu","label":"Thursday · Points","dates":["2026-11-12"],"metric":"PTS","officialPlayers":["Cade Cunningham"]},
-    {"id":"fri","label":"Friday · Plus-minus","dates":["2026-11-13"],"metric":"PMP","officialPlayers":["Devin Vassell","Stephon Castle","Cam Spencer"]},
-    {"id":"weekend","label":"Weekend · Assists + rebounds","dates":["2026-11-14","2026-11-15"],"metric":"AR","officialPlayers":[],"provisional":true}
+    {
+      "id": "mon",
+      "label": "Monday · Steals",
+      "dates": [
+        "2026-11-09"
+      ],
+      "metric": "STL",
+      "officialPlayers": [
+        "Luka Dončić"
+      ],
+      "expectedQualifiers": 1
+    },
+    {
+      "id": "tue",
+      "label": "Tuesday · Points + rebounds + assists",
+      "dates": [
+        "2026-11-10"
+      ],
+      "metric": "PRA",
+      "officialPlayers": [
+        "Franz Wagner"
+      ],
+      "expectedQualifiers": 1
+    },
+    {
+      "id": "wed",
+      "label": "Wednesday · Field goals made",
+      "dates": [
+        "2026-11-11"
+      ],
+      "metric": "FGM",
+      "officialPlayers": [
+        "Franz Wagner",
+        "Victor Wembanyama"
+      ],
+      "expectedQualifiers": 1
+    },
+    {
+      "id": "thu",
+      "label": "Thursday · Points",
+      "dates": [
+        "2026-11-12"
+      ],
+      "metric": "PTS",
+      "officialPlayers": [
+        "Cade Cunningham"
+      ],
+      "expectedQualifiers": 1
+    },
+    {
+      "id": "fri",
+      "label": "Friday · Plus-minus",
+      "dates": [
+        "2026-11-13"
+      ],
+      "metric": "PMP",
+      "officialPlayers": [
+        "Devin Vassell",
+        "Stephon Castle",
+        "Cam Spencer"
+      ],
+      "expectedQualifiers": 1
+    },
+    {
+      "id": "weekend",
+      "label": "Weekend · Assists + rebounds",
+      "dates": [
+        "2026-11-14",
+        "2026-11-15"
+      ],
+      "metric": "AR",
+      "officialPlayers": [],
+      "provisional": true,
+      "expectedQualifiers": 1
+    }
   ]
 }
