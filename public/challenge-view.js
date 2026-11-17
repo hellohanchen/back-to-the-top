@@ -13,3 +13,14 @@ export function gameLabel(row){
  const period=g.period>4?`OT${g.period-4}`:g.period?`Q${g.period}`:'';
  return `${g.home} ${g.homeScore} - ${g.awayScore} ${g.away} ${period} ${clock||g.statusText||''}`.trim();
 }
+
+export function refreshState(data,now=Date.now()){
+ const known=data.slots?.length>0&&data.slots.every(s=>Number.isInteger(s.liveGames));
+ const live=data.slots?.some(s=>s.liveGames>0);
+ const next=Date.parse(data.nextGameAt);
+ const due=Number.isFinite(next)&&now>=next-10*60*1000;
+ const complete=data.slots?.every(s=>s.finishedGames===s.games);
+ const idle=known&&!live&&!due&&(Number.isFinite(next)||complete);
+ const stale=!idle&&now-Date.parse(data.generatedAt)>15*60*1000;
+ return {stale,label:stale?'Delayed':idle?(complete?'Games complete':'Waiting for next game'):''};
+}

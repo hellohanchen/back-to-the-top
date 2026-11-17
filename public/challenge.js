@@ -1,15 +1,15 @@
-import {visibleRows,marketUrl,gameLabel} from './challenge-view.js';
+import {visibleRows,marketUrl,gameLabel,refreshState} from './challenge-view.js';
 const endpoint='https://back-to-the-top.pages.dev/api/challenge';
 const status=document.querySelector('#status'),slots=document.querySelector('#slots');
 let lastData=null,busy=false,lastAttempt=0;
 function el(tag,text,cls){const n=document.createElement(tag);if(text!=null)n.textContent=text;if(cls)n.className=cls;return n;}
-function freshness(){if(!lastData)return;const expired=Date.now()-Date.parse(lastData.generatedAt)>15*60*1000;status.classList.toggle('warning',expired);status.textContent=`Updated ${new Date(lastData.generatedAt).toLocaleString()}${expired?' · Delayed':''}`;}
+function freshness(){if(!lastData)return;const {stale,label}=refreshState(lastData);status.classList.toggle('warning',stale);status.textContent=`Updated ${new Date(lastData.generatedAt).toLocaleString()}${label?' · '+label:''}`;}
 function render(data){
  document.querySelector('#title').textContent=data.title;slots.replaceChildren();
  for(const s of data.slots){
   const card=el('section',null,'slot'),heading=el('div',null,'slot-heading');heading.append(el('h2',s.label));
   const finished=s.finishedGames===s.games,confirmed=finished&&s.officialPlayers.length>0;
-  if(!finished)heading.append(el('span','Live','live-badge'));
+  if(!finished)heading.append(el('span',s.liveGames>0?'Live':s.rankings.length?'In progress':'Upcoming',s.liveGames>0?'live-badge':'pending-badge'));
   else if(!confirmed)heading.append(el('span','Awaiting confirmation','pending-badge'));
   card.append(heading,el('p',s.dates.join(' / '),'meta'));
   const requirement=s.qualification||data.qualification;

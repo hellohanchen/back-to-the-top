@@ -53,10 +53,12 @@ def build(config, games, date_ids, now):
         qualifiers=sum(r['rank']<=expected for r in rows)
         rows=rows[:max(expected*3,5,qualifiers,len(definition.get('officialPlayers',[])))]
         slots.append({**definition,'expectedQualifiers':expected,'games':len(ids),'finishedGames':sum(g['gameStatus']==3 for g in selected),
+                      'liveGames':sum(g['gameStatus']==2 for g in selected),
                       'rankings':rows})
     return {'schemaVersion':1,'generatedAt':now,'title':config['title'],'source':config['source'],
             'qualification':config['qualification'],'aggregation':config.get('aggregation','Highest single-game value. Weekend aggregation is provisional pending full official rules.'),
-            'throughDate':max(d for s in config['slots'] for d in s['dates']),'slots':slots}
+            'throughDate':max(d for s in config['slots'] for d in s['dates']),'slots':slots,
+            'nextGameAt':min((g['gameDateTimeUTC'] for g in games.values() if g['gameStatus']==1 and g.get('gameDateTimeUTC')),default=None)}
 
 
 def main():

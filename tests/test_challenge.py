@@ -30,3 +30,15 @@ class ChallengeTests(unittest.TestCase):
         self.assertEqual(rank([g],'AST')[0]['value'],12)
         self.assertEqual(rank([g],'FTM')[0]['playerId'],2)
         self.assertEqual(rank([g],'FTM')[0]['value'],9)
+
+    def test_refresh_schedule_metadata(self):
+        config={'title':'Wheel','source':'NBA','qualification':'Lock','slots':[{'dates':['2026-11-17'],'metric':'PTS'}]}
+        live=game();live['gameStatus']=2
+        future=game();future.update(gameId='0022600242',gameStatus=1,gameDateTimeUTC='2026-11-18T00:00:00Z')
+        data=build(config,{'a':live,'b':future},{'2026-11-17':['a','b']},'now')
+        self.assertEqual(data['slots'][0]['liveGames'],1)
+        self.assertEqual(data['nextGameAt'],'2026-11-18T00:00:00Z')
+        future['gameStatus']=3;live['gameStatus']=3
+        data=build(config,{'a':live,'b':future},{'2026-11-17':['a','b']},'now')
+        self.assertEqual(data['slots'][0]['liveGames'],0)
+        self.assertIsNone(data['nextGameAt'])
