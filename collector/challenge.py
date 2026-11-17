@@ -8,7 +8,7 @@ import time
 
 METRICS = {'STL': ('steals',), 'PRA': ('points','reboundsTotal','assists'),
            'FGM': ('fieldGoalsMade',), 'PTS': ('points',), 'PMP': ('plusMinusPoints',),
-           'AR': ('assists','reboundsTotal')}
+           'AR': ('assists','reboundsTotal'), 'AST': ('assists',), 'FTM': ('freeThrowsMade',)}
 
 
 def rank(games, metric):
@@ -55,7 +55,7 @@ def build(config, games, date_ids, now):
         slots.append({**definition,'expectedQualifiers':expected,'games':len(ids),'finishedGames':sum(g['gameStatus']==3 for g in selected),
                       'rankings':rows})
     return {'schemaVersion':1,'generatedAt':now,'title':config['title'],'source':config['source'],
-            'qualification':config['qualification'],'aggregation':'Highest single-game value. Weekend dates and aggregation are provisional pending full official rules.',
+            'qualification':config['qualification'],'aggregation':config.get('aggregation','Highest single-game value. Weekend aggregation is provisional pending full official rules.'),
             'throughDate':max(d for s in config['slots'] for d in s['dates']),'slots':slots}
 
 

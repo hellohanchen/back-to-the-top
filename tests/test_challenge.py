@@ -21,3 +21,12 @@ class ChallengeTests(unittest.TestCase):
 
     def test_upcoming_game_has_no_rankings(self):
         g=game();g['gameStatus']=1;self.assertEqual(rank([g],'PTS'),[])
+
+    def test_assists_and_free_throws_use_distinct_live_boxscore_fields(self):
+        g=game()
+        g['homeTeam']['players'][0]['statistics'].update(assists=12,freeThrowsMade=2)
+        g['awayTeam']['players'][0]['statistics'].update(assists=3,freeThrowsMade=9)
+        self.assertEqual(rank([g],'AST')[0]['playerId'],1)
+        self.assertEqual(rank([g],'AST')[0]['value'],12)
+        self.assertEqual(rank([g],'FTM')[0]['playerId'],2)
+        self.assertEqual(rank([g],'FTM')[0]['value'],9)
