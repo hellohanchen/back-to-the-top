@@ -13,6 +13,8 @@ function render(data){
   if(!finished)heading.append(el('span',s.liveGames>0?'Live':s.rankings.length?'In progress':'Upcoming',s.liveGames>0?'live-badge':'pending-badge'));
   else heading.append(el('span',confirmed==='official'?'Confirmed':confirmed==='automatic'?'Auto-confirmed':'Final · 24h review','pending-badge'));
   card.append(heading);
+  const requirement=s.qualification||data.qualification;
+  if(requirement)card.append(el('p',requirement.split('. ')[0]+'.','requirement'));
   const panel=el('div'),view=slotView(s,selectedViews.get(s.id));
   const started=s.liveGames>0||s.finishedGames>0||s.rankings.length>0;
   if(started){
