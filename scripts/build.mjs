@@ -5,6 +5,7 @@ await rm('dist', { recursive: true, force: true });
 await mkdir('dist', { recursive: true });
 await cp('public', 'dist', { recursive: true });
 await build({ entryPoints: ['src/app.js'], bundle: true, minify: true, outfile: 'dist/app.js', target: ['es2020'] });
+await build({entryPoints:['public/challenge.js'],bundle:true,minify:true,outfile:'dist/challenge.js',target:['es2020']});
 console.log('Built dist/');
 
 for(const page of ['index.html','challenge.html']){

@@ -1,7 +1,15 @@
-export function visibleRows(slot){
+export function confirmationState(slot,now=Date.now()){
+ if(!slot.games||slot.finishedGames!==slot.games)return '';
+ if(slot.officialPlayers?.length)return 'official';
+ const completed=Date.parse(slot.completedAt);
+ return Number.isFinite(completed)&&now>=completed+86400000?'automatic':'';
+}
+export function visibleRows(slot,now=Date.now()){
+
  const expected=slot.expectedQualifiers||1;
- const confirmed=slot.finishedGames===slot.games&&slot.officialPlayers.length>0;
- if(confirmed)return slot.officialPlayers.map(name=>({...slot.rankings.find(r=>r.name===name),name,qualified:true}));
+ const confirmed=confirmationState(slot,now);
+ if(confirmed==='official')return slot.officialPlayers.map(name=>({...slot.rankings.find(r=>r.name===name),name,qualified:true}));
+ if(confirmed==='automatic')return slot.rankings.filter(r=>r.rank<=expected).map(r=>({...r,qualified:true}));
  const qualifiers=slot.rankings.filter(r=>r.rank<=expected).length;
  return slot.rankings.slice(0,Math.max(expected*3,5,qualifiers,slot.officialPlayers.length)).map(r=>({...r,qualified:r.rank<=expected}));
 }
@@ -23,4 +31,17 @@ export function refreshState(data,now=Date.now()){
  const idle=known&&!live&&!due&&(Number.isFinite(next)||complete);
  const stale=!idle&&now-Date.parse(data.generatedAt)>15*60*1000;
  return {stale,label:stale?'Delayed':idle?(complete?'Games complete':'Waiting for next game'):''};
+}
+
+export function slotView(slot,preferred){
+ const started=slot.liveGames>0||slot.finishedGames>0||slot.rankings.length>0;
+ return started?(preferred||'leaderboard'):'games';
+}
+export function gameStatusLabel(game){
+ if(game.status===3)return 'Final';
+ if(game.status!==2)return game.statusText||'Scheduled';
+ const match=/^PT(?:(\d+)M)?([\d.]+)S$/.exec(game.clock||'');
+ const clock=match?`${Number(match[1]||0)}:${String(Math.floor(Number(match[2]))).padStart(2,'0')}`:'';
+ const period=game.period>4?`OT${game.period-4}`:game.period?`Q${game.period}`:'';
+ return [period,clock].filter(Boolean).join(' · ')||game.statusText||'Live';
 }

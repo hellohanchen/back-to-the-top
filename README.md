@@ -56,3 +56,13 @@ The local collector runs this enrichment before committing/publishing and keeps 
 Challenge retains its separate existing refresh workflow and local trigger. The Market change does not alter Challenge scheduling.
 
 Public metadata snapshots in `collector/metadata/` seed a clean local cache without credentials. Atlas requests from GitHub-hosted runners have returned HTTP 403, so all metadata reads now happen locally. Checked-in snapshots and persistent local caches retain successful batches, player aliases, series names, Moment-to-play/set identities and play/set metadata. Only missing metadata requires new queries. Transport or reconciliation failures stop publication; unavailable metadata stays Unattributed in the denominator. Deployment secrets remain exclusively in GitHub Actions.
+
+### Challenge cards
+
+Upcoming slots show the full schedule in the visitor's local time. Once a slot starts,
+Leaderboard and Games buttons switch between player statistics and all game scores;
+the choice is retained during automatic refreshes. Finished slots auto-confirm the
+statistical leaders (including ties) 24 hours after their last game ends. Completion
+uses NBA start time plus reported duration, falling back to the first observed Final
+when duration is unavailable. Explicit official player lists take priority; automatic
+confirmation is labeled separately and does not verify Moment eligibility.

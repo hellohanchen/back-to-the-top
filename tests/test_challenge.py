@@ -1,5 +1,5 @@
 import unittest
-from collector.challenge import rank,build
+from collector.challenge import rank,build,final_time
 
 def game(points=10):
     def p(i):return {'personId':i,'name':str(i),'played':'1','statistics':{'points':points,'reboundsTotal':3,'assists':4,'plusMinusPoints':-5}}
@@ -42,3 +42,23 @@ class ChallengeTests(unittest.TestCase):
         data=build(config,{'a':live,'b':future},{'2026-11-17':['a','b']},'now')
         self.assertEqual(data['slots'][0]['liveGames'],0)
         self.assertIsNone(data['nextGameAt'])
+
+    def test_games_cover_future_and_completed_days_and_wait_for_last_final(self):
+        config={'title':'Wheel','source':'NBA','qualification':'Lock','slots':[{'dates':['2026-11-17','2026-11-18'],'metric':'PTS'}]}
+        a=game();a.update(finalObservedAt='2026-11-18T03:00:00+00:00')
+        b=game();b.update(gameId='0022600242',gameStatus=1,gameDateTimeUTC='2026-11-19T01:00:00Z')
+        b['homeTeam']['score']=0;b['awayTeam']['score']=0
+        def result():return build(config,{'a':a,'b':b},{'2026-11-17':['a'],'2026-11-18':['b']},'now')['slots'][0]
+        self.assertIsNone(result()['completedAt'])
+        self.assertEqual(len(result()['gameDetails']),2)
+        self.assertEqual(result()['gameDetails'][1]['startAt'],'2026-11-19T01:00:00Z')
+        b.update(gameStatus=3,finalObservedAt='2026-11-19T03:00:00+00:00')
+        self.assertEqual(result()['completedAt'],b['finalObservedAt'])
+        del b['finalObservedAt'];self.assertIsNone(result()['completedAt'])
+
+    def test_historical_final_uses_nba_start_and_duration(self):
+        g=game();g.update(gameTimeUTC='2026-11-17T01:00:00Z',duration=140)
+        self.assertEqual(final_time(g),'2026-11-17T03:20:00+00:00')
+        g['gameStatus']=2;self.assertIsNone(final_time(g))
+        g.update(gameStatus=3,duration=None,finalObservedAt='2026-11-17T03:25:00+00:00')
+        self.assertEqual(final_time(g),g['finalObservedAt'])
