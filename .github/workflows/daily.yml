@@ -1,99 +1,27 @@
 name: Daily market data
 on:
-  schedule:
-    - cron: '0 5 * * *'
-    # Catch up if the midnight schedule is delayed or dropped.
-    - cron: '18 6 * * *'
   workflow_dispatch:
-    inputs:
-      refresh_date:
-        description: Optional completed EST date to recollect (YYYY-MM-DD)
-        type: string
-        default: ""
-      publish_only:
-        description: Verify publishing using the committed dataset without collecting
-        type: boolean
-        default: false
+  push:
+    branches: [main]
+    paths: ['public/data/**']
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: daily-market-data
   cancel-in-progress: false
 jobs:
-  collect:
+  publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Verify collector
-        run: python3 -m unittest discover -s tests -v
-      - uses: actions/cache@v4
-        with:
-          path: .cache/flow
-          key: flow-v1-${{ github.run_id }}
-          restore-keys: flow-v1-
-      - name: Collect missing completed EST days
-        if: ${{ !inputs.publish_only }}
-        env:
-          REFRESH_DATE: ${{ inputs.refresh_date }}
-        run: |
-          if [ -n "$REFRESH_DATE" ]; then
-            python3 collector/scan.py --workers 16 --start "$REFRESH_DATE" --end "$REFRESH_DATE" --refresh
-          else
-            python3 collector/scan.py --workers 16 --latest-first
-          fi
-      - uses: actions/cache/save@v4
-        if: ${{ always() && !inputs.publish_only }}
-        with:
-          path: .cache/flow
-          key: flow-v1-${{ github.run_id }}
-      - uses: actions/cache/restore@v4
-        id: market-cache
-        with:
-          path: |
-            .cache/market-share/metadata.json
-            .cache/market-share/player-aliases.json
-            .cache/market-share/pairs.json
-            .cache/market-share/chain-identities.json
-            .cache/market-share/series.json
-          key: market-metadata-v1-${{ github.run_id }}
-          restore-keys: market-metadata-v1-
-      - name: Reconcile Set and player revenue shares
-        run: python3 -m collector.market_share
-      - name: Preserve incremental metadata even after failure
-        uses: actions/cache/save@v4
-        if: ${{ always() && steps.market-cache.outcome == 'success' }}
-        with:
-          path: |
-            .cache/market-share/metadata.json
-            .cache/market-share/player-aliases.json
-            .cache/market-share/pairs.json
-            .cache/market-share/chain-identities.json
-            .cache/market-share/series.json
-          key: market-metadata-v1-${{ github.run_id }}-${{ github.run_attempt }}
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: unpublished-market-data
-          include-hidden-files: true
-          path: |
-            public/data
-            .cache/market-share/sales
-          retention-days: 7
-      - name: Resolve calendar player names
-        run: python3 -m collector.player_names
-      - name: Record verified data
-        run: |
-          git config user.name 'Back to the Top Data'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add public/data
-          if ! git diff --cached --quiet; then
-            git commit -m 'data: update completed EST days'
-            git push
-          fi
+      - name: Validate committed snapshot without upstream requests
+        run: python3 -m collector.validate_snapshot
       - name: Publish and verify hosted dataset
         env:
           SITE_URL: https://back-to-the-top-han.han110656.chatgpt.site
@@ -102,7 +30,7 @@ jobs:
         run: python3 scripts/publish-data.py
 
   pages:
-    needs: collect
+    needs: publish
     permissions:
       contents: read
       pages: write
@@ -110,7 +38,7 @@ jobs:
     uses: ./.github/workflows/pages.yml
 
   cloudflare:
-    needs: collect
+    needs: publish
     permissions:
       contents: read
     uses: ./.github/workflows/cloudflare.yml
