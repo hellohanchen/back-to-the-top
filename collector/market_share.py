@@ -232,6 +232,9 @@ def main():
     identities = seed_and_cache(args.cache, 'chain-identities.json')
     pair_path = args.cache/'pairs.json'
     pair_meta = seed_and_cache(args.cache, 'pairs.json')
+    atomic_json(path, metadata)
+    atomic_json(identities_path, identities)
+    atomic_json(pair_path, pair_meta)
     for day_path in sorted((args.output/'days').glob('*.json')):
         day = json.loads(day_path.read_text())
         if day.get('status') != 'complete' or (not args.refresh_groups and day.get('marketShare', {}).get('version') == VERSION):
