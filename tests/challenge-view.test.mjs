@@ -27,3 +27,13 @@ test('scoreboard states include live overtime, finals and schedule exceptions',(
  assert.equal(gameStatusLabel({status:3}),'Final');
  assert.equal(gameStatusLabel({status:1,statusText:'Postponed'}),'Postponed');
 });
+
+import {compactGameLabel} from '../public/challenge-view.js';
+test('compact games use EST dates and single-line live and final scores',()=>{
+ const g={home:'LAL',away:'LAC',status:1,startAt:'2026-11-20T01:00:00Z'};
+ assert.equal(compactGameLabel(g),'LAL - LAC, 11/19 8:00 EST');
+ assert.equal(compactGameLabel({...g,status:2,homeScore:111,awayScore:99,period:4,clock:'PT05M43.00S'}),'LAL 111 - 99 LAC Q4 5:43');
+ assert.equal(compactGameLabel({...g,status:3,homeScore:111,awayScore:99}),'LAL 111 - 99 LAC Final');
+ assert.match(compactGameLabel({...g,statusText:'Postponed'}),/Postponed$/);
+ assert.equal(compactGameLabel({...g,startAt:null,date:'2026-11-19'}),'LAL - LAC, 2026-11-19');
+});

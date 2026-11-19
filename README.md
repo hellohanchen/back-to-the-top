@@ -59,7 +59,7 @@ Public metadata snapshots in `collector/metadata/` seed a clean local cache with
 
 ### Challenge cards
 
-Upcoming slots show the full schedule in the visitor's local time. Once a slot starts,
+Upcoming slots show compact single-line matchups and start times in fixed EST (UTC−5). Once a slot starts,
 Leaderboard and Games buttons switch between player statistics and all game scores;
 the choice is retained during automatic refreshes. Finished slots auto-confirm the
 statistical leaders (including ties) 24 hours after their last game ends. Completion

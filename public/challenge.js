@@ -1,10 +1,10 @@
-import {visibleRows,marketUrl,gameLabel,refreshState,confirmationState,slotView,gameStatusLabel} from './challenge-view.js';
+import {visibleRows,marketUrl,gameLabel,refreshState,confirmationState,slotView,compactGameLabel} from './challenge-view.js';
 const endpoint='https://back-to-the-top.pages.dev/api/challenge';
 const status=document.querySelector('#status'),slots=document.querySelector('#slots');
 const selectedViews=new Map();
 let lastData=null,busy=false,lastAttempt=0;
 function el(tag,text,cls){const n=document.createElement(tag);if(text!=null)n.textContent=text;if(cls)n.className=cls;return n;}
-function freshness(){if(!lastData)return;const {stale,label}=refreshState(lastData);status.classList.toggle('warning',stale);status.textContent=`Updated ${new Date(lastData.generatedAt).toLocaleString()}${label?' · '+label:''}`;}
+function freshness(){if(!lastData)return;const {stale,label}=refreshState(lastData);status.classList.toggle('warning',stale);status.textContent=`Updated ${new Date(lastData.generatedAt).toLocaleString()}${stale?' · '+label:''}`;}
 function render(data){
  document.querySelector('#title').textContent=data.title;slots.replaceChildren();
  for(const s of data.slots){
@@ -12,10 +12,7 @@ function render(data){
   const finished=s.games>0&&s.finishedGames===s.games,confirmed=confirmationState(s);
   if(!finished)heading.append(el('span',s.liveGames>0?'Live':s.rankings.length?'In progress':'Upcoming',s.liveGames>0?'live-badge':'pending-badge'));
   else heading.append(el('span',confirmed==='official'?'Confirmed':confirmed==='automatic'?'Auto-confirmed':'Final · 24h review','pending-badge'));
-  card.append(heading,el('p',s.dates.join(' / '),'meta'));
-  const requirement=s.qualification||data.qualification;
-  if(requirement)card.append(el('p',requirement.split('. ')[0]+'.','requirement'));
-  if(confirmed==='automatic')card.append(el('p','Auto-confirmed from NBA stats after 24 hours.','meta'));
+  card.append(heading);
   const panel=el('div'),view=slotView(s,selectedViews.get(s.id));
   const started=s.liveGames>0||s.finishedGames>0||s.rankings.length>0;
   if(started){
@@ -34,17 +31,11 @@ function render(data){
 }
 function renderGames(panel,slot){
  const games=slot.gameDetails||[];
- if(!games.length){panel.append(el('p','Schedule unavailable · retrying automatically','empty'));return;}
+ if(!games.length){panel.append(el('p','Schedule unavailable','empty'));return;}
  const list=el('div',null,'games-list');
  for(const g of games){
   const row=el('div',null,'game-row');
-  const start=Date.parse(g.startAt),scheduled=g.status===1;
-  const time=Number.isFinite(start)?new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}).format(start):g.date;
-  row.append(el('div',scheduled?time:gameStatusLabel(g),'game-state'));
-  for(const side of ['away','home']){
-   const team=el('div',null,'game-team');team.append(el('span',g[side]),el('strong',scheduled?'—':g[side+'Score']??'—'));row.append(team);
-  }
-  if(!scheduled)row.append(el('div',g.date,'game-date'));
+  row.textContent=compactGameLabel(g);
   list.append(row);
  }panel.append(list);
 }

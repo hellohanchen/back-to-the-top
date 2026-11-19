@@ -45,3 +45,15 @@ export function gameStatusLabel(game){
  const period=game.period>4?`OT${game.period-4}`:game.period?`Q${game.period}`:'';
  return [period,clock].filter(Boolean).join(' · ')||game.statusText||'Live';
 }
+
+export function compactGameLabel(game){
+ if(game.status===2||game.status===3)return `${game.home} ${game.homeScore??'—'} - ${game.awayScore??'—'} ${game.away} ${gameStatusLabel(game).replace(' · ',' ')}`;
+ const start=Date.parse(game.startAt);
+ let time=game.date||'Time TBD';
+ if(Number.isFinite(start)){
+  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'Etc/GMT+5',month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit',hour12:true}).formatToParts(start).map(p=>[p.type,p.value]));
+  time=`${parts.month}/${parts.day} ${parts.hour}:${parts.minute} EST`;
+ }
+ const exception=/postponed|cancelled|canceled|suspended|delayed/i.test(game.statusText||'')?` · ${game.statusText}`:'';
+ return `${game.home} - ${game.away}, ${time}${exception}`;
+}
