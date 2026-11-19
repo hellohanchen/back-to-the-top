@@ -25,6 +25,15 @@ def seed_metadata():
                   "playerId":values[1], "playerName":values[1]} for mid,values in data["moments"].items()}
 
 
+def seed_and_cache(cache, name):
+    seed_path = SEED/name
+    cache_path = cache/name
+    result = json.loads(seed_path.read_text()) if seed_path.exists() else {}
+    if cache_path.exists():
+        result.update(json.loads(cache_path.read_text()))
+    return result
+
+
 def sale_rows(events, flow):
     rows = []
     for event in events:
@@ -220,9 +229,9 @@ def main():
                          if info.get('setId') or not metadata.get(mid, {}).get('setId')})
     flow = Flow(args.flow_cache, 12)
     identities_path = args.cache/'chain-identities.json'
-    identities = json.loads(identities_path.read_text()) if identities_path.exists() else {}
+    identities = seed_and_cache(args.cache, 'chain-identities.json')
     pair_path = args.cache/'pairs.json'
-    pair_meta = json.loads(pair_path.read_text()) if pair_path.exists() else {}
+    pair_meta = seed_and_cache(args.cache, 'pairs.json')
     for day_path in sorted((args.output/'days').glob('*.json')):
         day = json.loads(day_path.read_text())
         if day.get('status') != 'complete' or (not args.refresh_groups and day.get('marketShare', {}).get('version') == VERSION):

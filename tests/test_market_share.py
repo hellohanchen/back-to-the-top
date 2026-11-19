@@ -36,3 +36,42 @@ class Shares(unittest.TestCase):
             result=canonical_players({'a':{'playerName':'Steph Curry'},'b':{'playerName':'Stephen Curry'},'c':{'playerName':'Nikola Jokic'}},Path(folder))
         self.assertEqual(result['a']['playerId'],result['b']['playerId'])
         self.assertEqual(result['c']['playerName'],'Nikola Jokić')
+
+    def test_identity_seed_survives_missing_or_partial_runner_cache(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from collector.market_share import seed_and_cache
+        with tempfile.TemporaryDirectory() as folder:
+            seed, cache = Path(folder)/'seed', Path(folder)/'cache'
+            seed.mkdir(); cache.mkdir()
+            (seed/'chain-identities.json').write_text(json.dumps({'1':[12,34], '2':[56,78]}))
+            with patch('collector.market_share.SEED', seed):
+                self.assertEqual(seed_and_cache(cache, 'chain-identities.json'), {'1':[12,34], '2':[56,78]})
+                (cache/'chain-identities.json').write_text(json.dumps({'2':[56,79], '3':[90,12]}))
+                self.assertEqual(seed_and_cache(cache, 'chain-identities.json'), {'1':[12,34], '2':[56,79], '3':[90,12]})
+                self.assertEqual(seed_and_cache(cache, 'pairs.json'), {})
+
+    def test_seeded_moment_needs_no_metadata_request_on_clean_runner(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from collector.market_share import main
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder); seed=root/'seed'; seed.mkdir()
+            output=root/'output'; (output/'days').mkdir(parents=True)
+            sales=root/'sales'; sales.mkdir()
+            (seed/'moments.json').write_text(json.dumps({'sets':{'4':['Base','S1']},'moments':{'1':['4','A']}}))
+            (seed/'player-aliases.json').write_text(json.dumps({'A':'A'}))
+            (seed/'series.json').write_text('{}')
+            date='2026-11-17'
+            expected={'volume':1,'sales':1,'sources':{k:{'volume':int(k=='listing'),'sales':int(k=='listing')} for k in ('offer','listing','legacy')}}
+            (output/'days'/f'{date}.json').write_text(json.dumps({'date':date,'status':'complete','moments':expected}))
+            (sales/f'{date}.json').write_text(json.dumps([{'momentId':'1','price':'1','source':'listing'}]))
+            with patch('collector.market_share.SEED',seed), patch('sys.argv',['market_share','--output',str(output),'--cache',str(root/'cache'),'--sales-dir',str(sales)]), patch('collector.market_share.subprocess.run',side_effect=AssertionError('Unexpected network request')), patch('collector.market_share.build_dataset'):
+                main()
+            actual=json.loads((output/'days'/f'{date}.json').read_text())['marketShare']
+            self.assertEqual(actual['sets'][0]['volume'],1)
+            self.assertEqual(actual['quality']['unattributedSetSales'],0)
