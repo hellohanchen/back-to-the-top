@@ -1,66 +1,56 @@
 {
-  "title": "The Wheel · Nov 16–22",
-  "source": "Operator-provided Top Shot screenshot, 2026-11-17",
+  "title": "The Wheel \u00b7 Nov 23\u201329",
+  "source": "Operator-provided Top Shot screenshot, 2026-11-24",
   "qualification": "Lock a Top Shot Debut, Rare, Legendary or Ultimate Moment. Moment eligibility is not yet automatically checked.",
   "slots": [
     {
       "id": "mon",
-      "label": "Monday · Points + rebounds + assists",
+      "label": "Monday \u00b7 Rebounds + assists",
       "dates": [
-        "2026-11-16"
+        "2026-11-23"
       ],
-      "metric": "PRA",
+      "metric": "AR",
       "officialPlayers": [],
       "expectedQualifiers": 1
     },
     {
       "id": "tue",
-      "label": "Tuesday · Assists",
+      "label": "Tuesday \u00b7 Free throws made",
       "dates": [
-        "2026-11-17"
-      ],
-      "metric": "AST",
-      "officialPlayers": [],
-      "expectedQualifiers": 1
-    },
-    {
-      "id": "wed",
-      "label": "Wednesday · Steals",
-      "dates": [
-        "2026-11-18"
-      ],
-      "metric": "STL",
-      "officialPlayers": [],
-      "expectedQualifiers": 1
-    },
-    {
-      "id": "thu",
-      "label": "Thursday · Points",
-      "dates": [
-        "2026-11-19"
-      ],
-      "metric": "PTS",
-      "officialPlayers": [],
-      "expectedQualifiers": 1
-    },
-    {
-      "id": "fri",
-      "label": "Friday · Free throws made",
-      "dates": [
-        "2026-11-20"
+        "2026-11-24"
       ],
       "metric": "FTM",
       "officialPlayers": [],
       "expectedQualifiers": 1
     },
     {
-      "id": "weekend",
-      "label": "Weekend · Field goals made",
+      "id": "wed",
+      "label": "Wednesday \u00b7 Steals + blocks",
       "dates": [
-        "2026-11-21",
-        "2026-11-22"
+        "2026-11-25"
       ],
-      "metric": "FGM",
+      "metric": "SB",
+      "officialPlayers": [],
+      "expectedQualifiers": 1
+    },
+    {
+      "id": "fri",
+      "label": "Friday \u00b7 Blocks",
+      "dates": [
+        "2026-11-27"
+      ],
+      "metric": "BLK",
+      "officialPlayers": [],
+      "expectedQualifiers": 1
+    },
+    {
+      "id": "weekend",
+      "label": "Weekend \u00b7 Points + rebounds + assists",
+      "dates": [
+        "2026-11-28",
+        "2026-11-29"
+      ],
+      "metric": "PRA",
       "officialPlayers": [],
       "expectedQualifiers": 1,
       "provisional": true

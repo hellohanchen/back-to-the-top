@@ -8,7 +8,8 @@ import time
 
 METRICS = {'STL': ('steals',), 'PRA': ('points','reboundsTotal','assists'),
            'FGM': ('fieldGoalsMade',), 'PTS': ('points',), 'PMP': ('plusMinusPoints',),
-           'AR': ('assists','reboundsTotal'), 'AST': ('assists',), 'FTM': ('freeThrowsMade',)}
+           'AR': ('assists','reboundsTotal'), 'AST': ('assists',), 'FTM': ('freeThrowsMade',),
+           'SB': ('steals','blocks'), 'BLK': ('blocks',)}
 
 
 def rank(games, metric):

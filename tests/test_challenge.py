@@ -62,3 +62,13 @@ class ChallengeTests(unittest.TestCase):
         g['gameStatus']=2;self.assertIsNone(final_time(g))
         g.update(gameStatus=3,duration=None,finalObservedAt='2026-11-17T03:25:00+00:00')
         self.assertEqual(final_time(g),g['finalObservedAt'])
+
+    def test_defensive_metrics_choose_correct_leaders(self):
+        g=game()
+        g['homeTeam']['players'][0]['statistics'].update(steals=5,blocks=1)
+        g['awayTeam']['players'][0]['statistics'].update(steals=0,blocks=4)
+        self.assertEqual(rank([g],'SB')[0]['playerId'],1)
+        self.assertEqual(rank([g],'SB')[0]['value'],6)
+        self.assertEqual(rank([g],'BLK')[0]['playerId'],2)
+        self.assertEqual(rank([g],'BLK')[0]['value'],4)
+        self.assertEqual(rank([g],'AR')[0]['value'],7)
