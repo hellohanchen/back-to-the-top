@@ -315,10 +315,14 @@ def build_dataset(output, now=None):
             row['moments']['highestSale'] = historical[row['date']]
     names_path = output/'player-names.json'
     names = json.loads(names_path.read_text()) if names_path.exists() else {}
+    details_path = output/'moment-details.json'
+    details = json.loads(details_path.read_text()) if details_path.exists() else {}
     for row in rows:
         sale = row.get('moments', {}).get('highestSale')
         if sale and sale['momentId'] in names:
             sale['playerName'] = names[sale['momentId']]
+        if sale and sale['momentId'] in details:
+            sale.update(details[sale['momentId']])
     complete = [r for r in rows if r['status'] == 'complete']
     payload = {'schemaVersion': 1, 'title': 'Back to the Top', 'timezone': 'EST (UTC−05:00)',
                'startDate': str(START), 'throughDate': str(yesterday), 'generatedAt': now.isoformat(),

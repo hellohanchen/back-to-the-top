@@ -93,7 +93,8 @@ function renderCalendar(){
    const img=document.createElement('img');img.src=`https://assets.nbatopshot.com/media/${sale.momentId}/image?width=256&format=webp`;img.alt=sale.playerName||'Top Moment';img.loading='lazy';img.draggable=false;img.onerror=()=>{img.hidden=true;};
    const value=document.createElement('strong');value.textContent=format(sale.price,true);
    a.append(img);
-   if(sale.playerName){const name=document.createElement('span');name.className='player-name';name.textContent=sale.playerName;a.append(name);}
+   if(sale.playerName){const name=document.createElement('span');name.className='player-name';name.textContent=sale.playerName;if(Number.isInteger(sale.serialNumber)&&Number.isInteger(sale.editionSize)&&sale.serialNumber>0&&sale.editionSize>=sale.serialNumber){const serial=document.createElement('span');serial.className='moment-serial';serial.textContent=` ${sale.serialNumber}/${sale.editionSize}`;name.append(serial);}a.append(name);}
+   if(sale.serialNumber&&sale.editionSize)a.setAttribute('aria-label',`${cell.date}: ${sale.playerName||'Top Moment'}, ${sale.serialNumber}/${sale.editionSize}, ${format(sale.price,true)}. Open NBA Top Shot in a new window`);
    a.append(value);el.append(a);
   }else{const empty=document.createElement('span');empty.className='calendar-missing';empty.textContent=cell.date>data.throughDate?'—':cell.row?.moments?.sales===0?'No sales':'Pending';el.append(empty);}
   target.append(el);

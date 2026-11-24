@@ -24,3 +24,5 @@ footer a{color:inherit;text-underline-offset:3px}footer a:hover{color:#e6e8eb}
 @media(max-width:600px){header{grid-template-columns:minmax(0,1fr);gap:8px}.header-start{flex-shrink:1;gap:18px}.site-nav{font-size:12px;gap:14px}.range-buttons{grid-column:1;grid-row:2;width:100%}.range-buttons button{flex:1}#range-label{grid-column:1;grid-row:3;text-align:left}#custom{grid-column:1;grid-row:3}.share-details td:first-child{overflow-wrap:anywhere}}
 
 .share-context{font-size:11px;color:#8591a3;margin:4px 0 12px}#players-chart{height:400px}
+
+.moment-serial{white-space:nowrap;color:#8a94a4;font-variant-numeric:tabular-nums}
