@@ -30,6 +30,19 @@ def namespace():
     raise RuntimeError('Namespace listing exceeded safety bound')
 
 
+def validate_snapshot(body, config):
+    data=json.loads(body)
+    expected=config['slots']
+    slots=data.get('slots', [])
+    if data.get('schemaVersion')!=1 or len(body)>=1_000_000 or not expected or len(slots)!=len(expected):
+        raise ValueError('Invalid tracker snapshot size, schema or slot count')
+    for actual, configured in zip(slots, expected):
+        for key in ('id', 'dates', 'metric'):
+            if actual.get(key)!=configured[key]:
+                raise ValueError(f'Tracker snapshot does not match current wheel: {key}')
+    return data
+
+
 def main():
     p=argparse.ArgumentParser();p.add_argument('mode',choices=['setup','publish']);a=p.parse_args()
     ns=namespace()
@@ -42,8 +55,8 @@ def main():
         print('Tracker KV namespace and production Pages binding configured')
         return
     if ns is None:raise RuntimeError('Run storage setup before publishing')
-    body=Path('.cache/challenge/latest.json').read_bytes();data=json.loads(body)
-    assert data['schemaVersion']==1 and len(data['slots'])==6 and len(body)<1_000_000
+    body=Path('.cache/challenge/latest.json').read_bytes()
+    data=validate_snapshot(body,json.loads(Path('collector/wheel.json').read_text()))
     api(f'/storage/kv/namespaces/{ns}/values/latest','PUT',body,raw=True)
     for attempt in range(18):
         url=f'https://back-to-the-top.pages.dev/api/challenge?verify={time.time_ns()}'
